@@ -17,7 +17,7 @@ def get_real_images_uint8(
 
 
 def compute_fid_kid(
-        generate_fn, # <-- NOVA ALTERAÇÃO: Recebe uma função que gera as imagens
+        generate_fn,
         hf_split, image_size, device,
         n_samples=5000, kid_subsets=50, kid_subset_size=100,
         gen_batch_size=128, seed=0,
@@ -52,7 +52,7 @@ def compute_fid_kid(
     return {"fid": fid_val, "kid_mean": kid_mean.item(), "kid_std": kid_std.item()}
 
 def evaluate_over_seeds(
-    generate_fn, # <-- NOVA ALTERAÇÃO
+    generate_fn,
     hf_split, image_size, device,
     n_seeds=10, n_samples=5000, gen_batch_size=128,
 ) -> dict:
