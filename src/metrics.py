@@ -1,80 +1,186 @@
-import torch
+"""
+metrics.py — FID / KID evaluation for generative models
+Usage:
+    from metrics import run_evaluation
+    results = run_evaluation(generator, latent_dim, test_loader, device, cfg)
+"""
+
 import numpy as np
-from torchvision import transforms as T
-
-def get_real_images_uint8(
-    hf_split, n: int, seed: int, image_size: int
-) -> torch.Tensor:
-    rng = np.random.RandomState(seed)
-    indices = rng.choice(len(hf_split), size=n, replace=False).tolist()
-    tf = T.Compose([
-        T.Resize(image_size, interpolation=T.InterpolationMode.BILINEAR),
-        T.CenterCrop(image_size),
-        T.ToTensor(),
-    ])
-    imgs = [tf(hf_split[int(i)]["image"]) for i in indices]
-    return (torch.stack(imgs) * 255).to(torch.uint8)
+from scipy import linalg
+import torch
+from torchvision.models import inception_v3, Inception_V3_Weights
 
 
-def compute_fid_kid(
-        generate_fn,
-        hf_split, image_size, device,
-        n_samples=5000, kid_subsets=50, kid_subset_size=100,
-        gen_batch_size=128, seed=0,
-    ) -> dict:
-    from torchmetrics.image.fid import FrechetInceptionDistance
-    from torchmetrics.image.kid import KernelInceptionDistance
+# ── InceptionV3 ───────────────────────────────────────────────────────────────
 
-    # Em vez de chamar a difusão, chama a função genérica que lhe passaste
-    fake = generate_fn(n=n_samples, batch_size=gen_batch_size, seed=seed)
-    
-    fake_u8 = (fake * 255).to(torch.uint8)
-    real_u8 = get_real_images_uint8(hf_split, n_samples, seed, image_size)
+def load_inception(device: torch.device):
+    """Load InceptionV3 with the classification head removed."""
+    model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
+    model.fc = torch.nn.Identity()
+    model.eval().to(device)
+    return model
 
-    fid_m = FrechetInceptionDistance(feature=2048).to(device)
-    kid_m = KernelInceptionDistance(
-        feature=2048, subsets=kid_subsets, subset_size=kid_subset_size
-    ).to(device)
 
-    # Feed in batches to avoid OOM on Inception upsample
-    inception_batch = 64
-    for i in range(0, n_samples, inception_batch):
-        r = real_u8[i:i+inception_batch].to(device)
-        f = fake_u8[i:i+inception_batch].to(device)
-        fid_m.update(r, real=True)
-        fid_m.update(f, real=False)
-        kid_m.update(r, real=True)
-        kid_m.update(f, real=False)
+@torch.no_grad()
+def get_inception_features(images: torch.Tensor, model, device,
+                            batch_size: int = 32) -> np.ndarray:
+    """
+    Extract InceptionV3 features from a tensor of images.
 
-    fid_val = fid_m.compute().item()
-    kid_mean, kid_std = kid_m.compute()
+    Accepts images in [-1, 1] (Tanh output) or [0, 1] (ToTensor output).
+    Automatically converts to [0, 1] before passing to InceptionV3.
+    """
+    imgs = images.float()
+    if imgs.min() < 0:
+        imgs = (imgs * 0.5 + 0.5).clamp(0, 1)   # [-1, 1] → [0, 1]
 
-    return {"fid": fid_val, "kid_mean": kid_mean.item(), "kid_std": kid_std.item()}
+    imgs = torch.nn.functional.interpolate(
+        imgs, size=(299, 299), mode='bilinear', align_corners=False
+    )
 
-def evaluate_over_seeds(
-    generate_fn,
-    hf_split, image_size, device,
-    n_seeds=10, n_samples=5000, gen_batch_size=128,
-) -> dict:
-    fids, k_means, k_stds = [], [], []
+    feats = []
+    for i in range(0, len(imgs), batch_size):
+        feats.append(model(imgs[i:i + batch_size].to(device)).cpu().numpy())
+    return np.concatenate(feats, axis=0)
 
-    for seed in range(n_seeds):
-        r = compute_fid_kid(
-            generate_fn, hf_split, image_size, device,
-            n_samples=n_samples, gen_batch_size=gen_batch_size, seed=seed,
-        )
-        fids.append(r["fid"])
-        k_means.append(r["kid_mean"])
-        k_stds.append(r["kid_std"])
-        print(f"  FID={r['fid']:.2f}  KID={r['kid_mean']:.5f}+/-{r['kid_std']:.5f}")
 
-    summary = {
-        "fid_mean": float(np.mean(fids)),
-        "fid_std": float(np.std(fids)),
-        "kid_mean_avg": float(np.mean(k_means)),
-        "kid_std_avg": float(np.mean(k_stds)),
+# ── FID ───────────────────────────────────────────────────────────────────────
+
+def compute_fid(real_feats: np.ndarray, fake_feats: np.ndarray) -> float:
+    """
+    Fréchet Inception Distance.
+    Lower = better quality + diversity.
+    """
+    mu1, sigma1 = real_feats.mean(0), np.cov(real_feats, rowvar=False)
+    mu2, sigma2 = fake_feats.mean(0), np.cov(fake_feats, rowvar=False)
+
+    diff = mu1 - mu2
+    covmean, _ = linalg.sqrtm(sigma1 @ sigma2, disp=False)
+    if np.iscomplexobj(covmean):
+        covmean = covmean.real
+
+    return float(diff @ diff + np.trace(sigma1 + sigma2 - 2 * covmean))
+
+
+# ── KID ───────────────────────────────────────────────────────────────────────
+
+def compute_kid(real_feats: np.ndarray, fake_feats: np.ndarray,
+                num_subsets: int = 50, subset_size: int = 100) -> tuple[float, float]:
+    """
+    Kernel Inception Distance — unbiased estimator via polynomial kernel MMD.
+    Returns (mean, std) across subsets.
+    Lower = better.
+    """
+    subset_size = min(subset_size, len(real_feats), len(fake_feats))
+    d = real_feats.shape[1]
+    scores = []
+
+    for _ in range(num_subsets):
+        r = real_feats[np.random.choice(len(real_feats), subset_size, replace=False)]
+        f = fake_feats[np.random.choice(len(fake_feats), subset_size, replace=False)]
+
+        kxx = (r @ r.T / d + 1) ** 3
+        kyy = (f @ f.T / d + 1) ** 3
+        kxy = (r @ f.T / d + 1) ** 3
+
+        mmd = (kxx.sum() - np.diag(kxx).sum()) / (subset_size * (subset_size - 1)) \
+            + (kyy.sum() - np.diag(kyy).sum()) / (subset_size * (subset_size - 1)) \
+            - 2 * kxy.mean()
+        scores.append(mmd)
+
+    return float(np.mean(scores)), float(np.std(scores))
+
+
+# ── Main evaluation loop ──────────────────────────────────────────────────────
+
+def run_evaluation(generator, latent_dim: int, ref_loader,
+                   device: torch.device, cfg: dict,
+                   generate_fn=None) -> dict:
+    """
+    Run FID/KID evaluation following the protocol:
+        - 5000 generated vs 5000 real
+        - 10 runs with different seeds
+        - Report mean ± std
+
+    Parameters
+    ----------
+    generator    : trained generator model
+    latent_dim   : size of the latent vector
+    ref_loader   : DataLoader with UNSEEN reference images (test split)
+    device       : torch device
+    cfg          : dict with keys:
+                     fid_kid_samples   (default 5000)
+                     num_runs          (default 10)
+                     num_subsets       (default 50)
+                     subset_size       (default 100)
+                     feature_batch_size(default 32)
+                     generation_seed   (default 123)
+    generate_fn  : optional custom generate function
+                   signature: (generator, latent_dim, n, device, seed) -> Tensor
+                   defaults to the built-in _default_generate
+
+    Returns
+    -------
+    dict with fid_mean, fid_std, kid_mean, kid_std, fid_per_run, kid_per_run
+    """
+    n        = cfg.get('fid_kid_samples',    5000)
+    n_runs   = cfg.get('num_runs',             10)
+    n_sub    = cfg.get('num_subsets',          50)
+    sub_size = cfg.get('subset_size',         100)
+    bs       = cfg.get('feature_batch_size',   32)
+    base_seed= cfg.get('generation_seed',     123)
+
+    gen_fn = generate_fn
+
+    print(f"Protocol: {n} generated vs {n} real  |  "
+          f"{n_runs} runs  |  KID: {n_sub} subsets × {sub_size}")
+
+    inception = load_inception(device)
+
+    all_real = []
+    for batch in ref_loader:
+        all_real.append(batch[0])
+        if sum(x.shape[0] for x in all_real) >= n:
+            break
+    all_real = torch.cat(all_real, dim=0)[:n]
+
+    print(f"\nA extrair features das imagens reais (fixas, n={len(all_real)})...")
+    feats_real = get_inception_features(all_real, inception, device, bs)
+
+    fid_scores, kid_means, kid_stds = [], [], []
+
+    for run in range(n_runs):
+        seed = base_seed + run
+        print(f"\n── Run {run + 1}/{n_runs}  (seed={seed}) ──────────────────────")
+
+        gen_imgs = gen_fn(generator, latent_dim, n, device, seed)
+
+        print("  A extrair features das imagens geradas...")
+        feats_gen = get_inception_features(gen_imgs, inception, device, bs)
+
+        fid_val           = compute_fid(feats_real, feats_gen)
+        kid_mean, kid_std = compute_kid(feats_real, feats_gen, n_sub, sub_size)
+
+        fid_scores.append(fid_val)
+        kid_means.append(kid_mean)
+        kid_stds.append(kid_std)
+
+        print(f"  FID = {fid_val:.4f}  |  KID = {kid_mean:.6f} ± {kid_std:.6f}")
+
+    # ── Sumário ───────────────────────────────────────────────────────────────
+    print("\n" + "=" * 50)
+    print("RESULTADOS FINAIS  (mean ± std  across runs)")
+    print("=" * 50)
+    print(f"  FID : {np.mean(fid_scores):.4f} ± {np.std(fid_scores):.4f}")
+    print(f"  KID : {np.mean(kid_means):.6f} ± {np.std(kid_means):.6f}")
+    print("=" * 50)
+
+    return {
+        'fid_mean':    float(np.mean(fid_scores)),
+        'fid_std':     float(np.std(fid_scores)),
+        'kid_mean':    float(np.mean(kid_means)),
+        'kid_std':     float(np.std(kid_means)),
+        'fid_per_run': fid_scores,
+        'kid_per_run': kid_means,
     }
-    print("\n====== Final evaluation ======")
-    print(f"FID : {summary['fid_mean']:.2f} +/- {summary['fid_std']:.2f}")
-    print(f"KID : {summary['kid_mean_avg']:.5f} +/- {summary['kid_std_avg']:.5f}")
-    return summary
+
