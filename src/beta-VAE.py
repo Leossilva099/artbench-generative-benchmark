@@ -32,10 +32,6 @@ KAGGLE_ROOT  = PROJECT_ROOT / "ArtBench-10"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-
-
-
-
 IMAGE_SIZE   = 32
 BATCH_SIZE   = 64
 NUM_WORKERS  = 2
@@ -259,9 +255,6 @@ class ConvVAE(nn.Module):
         return self.decode(z)
 
 
-
-
-
 def vae_loss(xhat, x, mu, logvar, beta: float = 1.0):
     B     = x.size(0)
     recon = F.mse_loss(xhat, x, reduction="sum") / B
@@ -355,9 +348,6 @@ def evaluate_vae(model, loader, beta=BETA):
     }
 
 
-
-
-
 def show_reconstructions(model, loader, n=8, save_path="reconstructions.png"):
     model.eval()
     x, _y, _idx = next(iter(loader))
@@ -397,14 +387,7 @@ def show_prior_samples(model, n=64, nrow=8, save_path="prior_samples.png"):
     print(f"Saved prior samples to {save_path}")
 
 
-
-
-
 def make_generate_fn(model: ConvVAE, device: torch.device):
-    """
-    Wraps model.sample into the generate_fn(n, batch_size, seed) signature
-    expected by metrics.compute_fid_kid / metrics.evaluate_over_seeds.
-    """
     @torch.no_grad()
     def generate_fn(n: int, batch_size: int, seed: int) -> torch.Tensor:
         torch.manual_seed(seed)
@@ -420,7 +403,6 @@ def make_generate_fn(model: ConvVAE, device: torch.device):
 
 
 def run_fid_kid(model, hf_split, args):
-    """Single-seed FID/KID evaluation."""
     from metrics import compute_fid_kid
 
     generate_fn = make_generate_fn(model, device)
@@ -441,7 +423,6 @@ def run_fid_kid(model, hf_split, args):
 
 
 def run_eval_over_seeds(model, hf_split, args):
-    """Multi-seed FID/KID evaluation."""
     from metrics import evaluate_over_seeds
 
     generate_fn = make_generate_fn(model, device)

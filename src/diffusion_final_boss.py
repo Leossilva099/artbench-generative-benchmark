@@ -1,48 +1,3 @@
-"""
-diffusion_artbench.py
-=====================
-DDPM with optional Classifier-Free Guidance (CFG) for ArtBench-10 (32x32).
-
-Key improvements over the starter notebook
--------------------------------------------
-1. Class-conditional U-Net with Classifier-Free Guidance (CFG).
-   At training time the class label is dropped with probability p_uncond,
-   teaching the model both conditional and unconditional denoising.
-   At sampling time the two predictions are interpolated:
-       eps_cfg = eps_uncond + w * (eps_cond - eps_uncond)
-   This is the dominant approach in modern diffusion (Ho & Salimans, 2022).
-
-2. Exponential Moving Average (EMA) of model weights.
-   EMA weights produce significantly smoother samples and are standard in
-   every serious DDPM implementation.
-
-3. DDIM deterministic sampler (Song et al., 2020).
-   Allows high-quality sampling in 50-100 steps instead of 1000, making
-   the mandatory 5000-sample evaluation loop tractable.
-
-4. Ablation-ready config dataclass.
-   Each experiment is fully described by a Config object, so ablations can
-   be run by changing one field.
-
-Usage
------
-# Quick smoke test on subset:
-    python diffusion_artbench.py --mode train --config small --epochs 50
-
-# Full training with best config:
-    python diffusion_artbench.py --mode train --config best --full_dataset --epochs 500
-
-# Evaluate a saved checkpoint:
-    python diffusion_artbench.py --mode eval --checkpoint models/best_ema.pt
-
-References
-----------
-Ho et al. (2020) DDPM - NeurIPS
-Ho & Salimans (2022) Classifier-Free Diffusion Guidance
-Song et al. (2020) DDIM - ICLR 2021
-Nichol & Dhariwal (2021) Improved DDPM - cosine schedule
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -187,8 +142,6 @@ def load_subset_ids(csv_path: Path, col: str = "train_id_original") -> list[int]
 
 
 class ArtBenchDataset(Dataset):
-    """Wraps a HuggingFace split with optional index subsetting."""
-
     def __init__(self, hf_split, transform, indices: Optional[list[int]] = None):
         self.ds = hf_split
         self.transform = transform
@@ -229,11 +182,6 @@ def build_loader(
 
 
 def make_cosine_schedule(T: int, s: float = 0.008, device="cpu") -> dict:
-    """
-    Cosine noise schedule (Nichol & Dhariwal, 2021).
-    Smoother alpha_bar decay than the linear schedule, especially beneficial
-    at 32x32 resolution.
-    """
     steps = T + 1
     t = torch.linspace(0, T, steps, dtype=torch.float64)
     f_t = torch.cos(((t / T) + s) / (1.0 + s) * math.pi * 0.5) ** 2
@@ -282,7 +230,6 @@ class GaussianDiffusion:
     def q_sample(
         self, x0: torch.Tensor, t: torch.Tensor, noise: Optional[torch.Tensor] = None
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Sample x_t from q(x_t | x_0) using the reparameterisation trick."""
         if noise is None:
             noise = torch.randn_like(x0)
         sa = self._gather(self.sqrt_alphas_cumprod, t, x0.ndim)
@@ -337,11 +284,6 @@ class GaussianDiffusion:
         cfg_scale: float = 1.0,
         labels: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """
-        DDIM deterministic sampler.
-        eta=0  -> fully deterministic (recommended for evaluation)
-        eta=1  -> recovers stochastic DDPM variance
-        """
         model.eval()
         # Build a uniformly-spaced sub-sequence of timesteps
         step_size = self.T // ddim_steps
@@ -390,11 +332,6 @@ class GaussianDiffusion:
         cfg_scale: float,
         labels: Optional[torch.Tensor],
     ) -> torch.Tensor:
-        """
-        Classifier-Free Guidance interpolation.
-        If cfg_scale == 1.0 or labels is None, returns the conditional (or
-        unconditional) prediction without blending.
-        """
         if labels is None or cfg_scale <= 1.0:
             return model(x_t, t, labels)
 
@@ -416,8 +353,6 @@ class GaussianDiffusion:
 # ---------------------------------------------------------------------------
 
 class SinusoidalPosEmb(nn.Module):
-    """Sinusoidal timestep embedding (Vaswani et al., 2017)."""
-
     def __init__(self, dim: int):
         super().__init__()
         self.dim = dim
@@ -471,23 +406,6 @@ class SelfAttention(nn.Module):
 
 
 class ArtBenchUNet(nn.Module):
-    """
-    U-Net noise predictor for 3-channel 32x32 images with optional
-    class conditioning for Classifier-Free Guidance.
-
-    Fixed 3-level encoder-decoder matching the proven starter notebook design:
-
-        Encoder:  32x32 (C)  ->  16x16 (2C)  ->  bottleneck at 8x8 (4C)
-        Decoder:  8x8  (4C)  ->  16x16 (2C)  ->  32x32 (C)
-
-    Skip connections pass the encoder feature maps directly to the decoder.
-    Channel widths: [C, 2C, 4C] where C = model_channels.
-
-    Class conditioning (CFG):
-        A learned embedding for each class (+ 1 null token) is added to the
-        time embedding before every ResBlock, following Ho & Salimans (2022).
-    """
-
     def __init__(
         self,
         in_channels: int = 3,
@@ -558,14 +476,6 @@ class ArtBenchUNet(nn.Module):
         t: torch.Tensor,
         labels: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """
-        Args:
-            x:      (B, 3, 32, 32) noisy image in [-1, 1]
-            t:      (B,) integer timestep indices
-            labels: (B,) class labels in [0, num_classes-1] or num_classes for null token
-        Returns:
-            (B, 3, 32, 32) predicted noise
-        """
         t_emb = self.time_embed(t)   # (B, t_dim)
 
         if labels is not None and self.use_cfg:
@@ -605,12 +515,7 @@ class ArtBenchUNet(nn.Module):
         return self.out_conv(h)            # (B, 3, 32, 32)
 
 
-class EMA: #usei claude professor peço desculpa
-    """
-    Exponential moving average of model parameters.
-    EMA weights are used exclusively at evaluation / sampling time.
-    """
-
+class EMA:
     def __init__(self, model: nn.Module, decay: float = 0.9999):
         self.decay = decay
         self.shadow = deepcopy(model)
@@ -710,7 +615,7 @@ def train(
         print(f"Epoch {epoch:04d}/{cfg.epochs}  loss={avg:.5f}  lr={lr_now:.2e}")
 
         # Checkpoint every 50 epochs
-        if epoch % 25 == 0 or epoch == cfg.epochs:
+        if epoch % 50 == 0 or epoch == cfg.epochs:
             ckpt = {
                 "model": model.state_dict(),
                 "ema": ema.state_dict() if ema is not None else None,
@@ -749,11 +654,6 @@ def generate_samples(
     use_ddim: bool = True,
     seed: int = 0,
 ) -> torch.Tensor:
-    """
-    Generate `n` samples and return as float32 tensor in [0, 1] (N, 3, H, W).
-    Uses EMA model if available (passed as `model`).
-    Class labels are sampled uniformly from all classes.
-    """
     set_seed(seed)
     model.eval()
     all_samples = []
@@ -966,6 +866,7 @@ def main():
         start_epoch = 1
         resume_ema = None
         history_so_far = []
+        resume_optimiser_state = None
 
         if args.resume:
             ckpt = torch.load(args.resume, map_location=device)
