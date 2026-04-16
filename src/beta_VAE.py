@@ -32,11 +32,15 @@ KAGGLE_ROOT  = PROJECT_ROOT / "ArtBench-10"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+
+
+
+
 IMAGE_SIZE   = 32
 BATCH_SIZE   = 64
-NUM_WORKERS  = 2
+NUM_WORKERS  = 0
 LATENT_DIM   = 128
-EPOCHS       = 100
+EPOCHS       = 300
 LR           = 1e-3
 BETA         = 0.1
 SPATIAL_FLAT = 256 * 4 * 4  
@@ -255,6 +259,9 @@ class ConvVAE(nn.Module):
         return self.decode(z)
 
 
+
+
+
 def vae_loss(xhat, x, mu, logvar, beta: float = 1.0):
     B     = x.size(0)
     recon = F.mse_loss(xhat, x, reduction="sum") / B
@@ -348,6 +355,9 @@ def evaluate_vae(model, loader, beta=BETA):
     }
 
 
+
+
+
 def show_reconstructions(model, loader, n=8, save_path="reconstructions.png"):
     model.eval()
     x, _y, _idx = next(iter(loader))
@@ -386,8 +396,11 @@ def show_prior_samples(model, n=64, nrow=8, save_path="prior_samples.png"):
     plt.close()
     print(f"Saved prior samples to {save_path}")
 
-
 def make_generate_fn(model: ConvVAE, device: torch.device):
+    """
+    Wraps model.sample into the generate_fn(n, batch_size, seed) signature
+    expected by metrics.compute_fid_kid / metrics.evaluate_over_seeds.
+    """
     @torch.no_grad()
     def generate_fn(n: int, batch_size: int, seed: int) -> torch.Tensor:
         torch.manual_seed(seed)
@@ -402,41 +415,6 @@ def make_generate_fn(model: ConvVAE, device: torch.device):
     return generate_fn
 
 
-def run_fid_kid(model, hf_split, args):
-    from metrics import compute_fid_kid
-
-    generate_fn = make_generate_fn(model, device)
-    results = compute_fid_kid(
-        generate_fn=generate_fn,
-        hf_split=hf_split,
-        image_size=args.image_size,
-        device=device,
-        n_samples=args.n_samples,
-        gen_batch_size=args.gen_batch_size,
-        seed=args.seed,
-    )
-    print(
-        f"FID : {results['fid']:.4f}\n"
-        f"KID : {results['kid_mean']:.6f} +/- {results['kid_std']:.6f}"
-    )
-    return results
-
-
-def run_eval_over_seeds(model, hf_split, args):
-    from metrics import evaluate_over_seeds
-
-    generate_fn = make_generate_fn(model, device)
-    summary = evaluate_over_seeds(
-        generate_fn=generate_fn,
-        hf_split=hf_split,
-        image_size=args.image_size,
-        device=device,
-        n_seeds=args.n_seeds,
-        n_samples=args.n_samples,
-        gen_batch_size=args.gen_batch_size,
-    )
-    return summary
-
 
 def parse_args():
     p = argparse.ArgumentParser(description="beta-VAE training and evaluation")
@@ -447,8 +425,6 @@ def parse_args():
                    help=(
                        "train           : train from scratch (or load if --load);\n"
                        "eval_recon      : reconstruction + KL metrics on training set;\n"
-                       "eval_fid        : single-seed FID/KID on a checkpoint;\n"
-                       "eval_fid_seeds  : multi-seed FID/KID on a checkpoint."
                    ))
 
     
@@ -560,10 +536,6 @@ def main():
             print(f"  {k}: {v:.6f}")
         show_reconstructions(vae, train_loader)
         show_prior_samples(vae)
-    elif args.mode == "eval_fid":
-        run_fid_kid(vae, train_hf, args)
-    elif args.mode == "eval_fid_seeds":
-        run_eval_over_seeds(vae, train_hf, args)
 
 
 if __name__ == "__main__":
