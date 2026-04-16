@@ -82,84 +82,109 @@ all_results = {}
 # ─────────────────────────────────────────────────────────────────────────────
 # GAN
 # ─────────────────────────────────────────────────────────────────────────────
-print("\n" + "="*60)
-print("GAN")
-print("="*60)
+# print("\n" + "="*60)
+# print("GAN")
+# print("="*60)
 
-gan_generator, gan_cfg, _ = load_dcgan_generator_for_inference('models/artBenchDCGAN.pt')
+# gan_generator, gan_cfg, _ = load_dcgan_generator_for_inference('models/artBenchDCGAN_Label_Smoothing.pt')
 
-all_results['gan'] = run_evaluation(
-    generator   = gan_generator,
-    latent_dim  = gan_cfg['latent_dim'],
-    ref_loader  = test_loader,
-    device      = device,
-    cfg         = evaluation_config,
-    generate_fn = generate_images,
-)
+# all_results['DCGAN_Label_Smoothing'] = run_evaluation(
+#     generator   = gan_generator,
+#     latent_dim  = gan_cfg['latent_dim'],
+#     ref_loader  = test_loader,
+#     device      = device,
+#     cfg         = evaluation_config,
+#     generate_fn = generate_images,
+# )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Diffusion
 # ─────────────────────────────────────────────────────────────────────────────
-print("\n" + "="*60)
-print("Diffusion")
-print("="*60)
+# print("\n" + "="*60)
+# print("Diffusion")
+# print("="*60)
 
-diff_cfg = CONFIGS['medium']
-diff_cfg.ddim_steps = 20
-schedule  = make_cosine_schedule(diff_cfg.T, s=diff_cfg.cosine_s, device=device)
-diffusion = GaussianDiffusion(schedule, device)
+# diff_cfg = CONFIGS['medium']
+# diff_cfg.ddim_steps = 20
+# schedule  = make_cosine_schedule(diff_cfg.T, s=diff_cfg.cosine_s, device=device)
+# diffusion = GaussianDiffusion(schedule, device)
 
-diff_ckpt  = torch.load('models/medium_final.pt', map_location=device)
-diff_model = ArtBenchUNet(
-    model_channels=diff_cfg.model_channels,
-    num_classes=diff_cfg.num_classes,
-    use_cfg=diff_cfg.use_cfg,
-).to(device)
-diff_model.load_state_dict(
-    diff_ckpt['ema'] if diff_ckpt.get('ema') else diff_ckpt['model']
-)
-diff_model.eval()
+# diff_ckpt  = torch.load('models/medium_final.pt', map_location=device)
+# diff_model = ArtBenchUNet(
+#     model_channels=diff_cfg.model_channels,
+#     num_classes=diff_cfg.num_classes,
+#     use_cfg=diff_cfg.use_cfg,
+# ).to(device)
+# diff_model.load_state_dict(
+#     diff_ckpt['ema'] if diff_ckpt.get('ema') else diff_ckpt['model']
+# )
+# diff_model.eval()
 
-def diffusion_generate_fn(model, latent_dim, n, device, seed):
-    return generate_samples(
-        model=model, diffusion=diffusion, cfg=diff_cfg,
-        device=device, n=n, batch_size=128, use_ddim=True, seed=seed,
-    )
+# def diffusion_generate_fn(model, latent_dim, n, device, seed):
+#     return generate_samples(
+#         model=model, diffusion=diffusion, cfg=diff_cfg,
+#         device=device, n=n, batch_size=128, use_ddim=True, seed=seed,
+#     )
 
-all_results['diffusion'] = run_evaluation(
-    generator   = diff_model,
-    latent_dim  = None,
-    ref_loader  = test_loader,
-    device      = device,
-    cfg         = evaluation_config,
-    generate_fn = diffusion_generate_fn,
-)
+# all_results['Diffusion_500_epochs'] = run_evaluation(
+#     generator   = diff_model,
+#     latent_dim  = None,
+#     ref_loader  = test_loader,
+#     device      = device,
+#     cfg         = evaluation_config,
+#     generate_fn = diffusion_generate_fn,
+# )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VAE
 # ─────────────────────────────────────────────────────────────────────────────
+# print("\n" + "="*60)
+# print("VAE")
+# print("="*60)
+
+# vae_model = ConvVAE(latent_dim=128).to(device)
+# vae_model.load_state_dict(torch.load('models/artbench_beta_vae_01_300ep.pt', map_location=device))
+# vae_model.eval()
+
+# _vae_gen = make_generate_fn(vae_model, device)
+
+# def vae_generate_fn(model, latent_dim, n, device, seed):
+#     return _vae_gen(n=n, batch_size=128, seed=seed)
+
+# all_results['Beta_VAE_01_300_epochs'] = run_evaluation(
+#     generator   = vae_model,
+#     latent_dim  = 128,
+#     ref_loader  = test_loader_vae,
+#     device      = device,
+#     cfg         = evaluation_config,
+#     generate_fn = vae_generate_fn,
+# )
+# ─────────────────────────────────────────────────────────────────────────────
+# Real vs Real — sanity check
+# ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "="*60)
-print("VAE")
+print("Real vs Real (sanity check)")
 print("="*60)
 
-vae_model = ConvVAE(latent_dim=128).to(device)
-vae_model.load_state_dict(torch.load('models/artbench_beta_vae.pt', map_location=device))
-vae_model.eval()
+def real_generate_fn(model, latent_dim, n, device, seed):
+    torch.manual_seed(seed)
+    all_real = []
+    for batch in test_loader:
+        all_real.append(batch[0])
+        if sum(x.shape[0] for x in all_real) >= n:
+            break
+    imgs = torch.cat(all_real, dim=0)[:n]
+    idx = torch.randperm(len(imgs))
+    return imgs[idx]
 
-_vae_gen = make_generate_fn(vae_model, device)
-
-def vae_generate_fn(model, latent_dim, n, device, seed):
-    return _vae_gen(n=n, batch_size=128, seed=seed)
-
-all_results['vae'] = run_evaluation(
-    generator   = vae_model,
-    latent_dim  = 128,
-    ref_loader  = test_loader_vae,
+all_results['Real_vs_Real'] = run_evaluation(
+    generator   = None,
+    latent_dim  = None,
+    ref_loader  = test_loader,
     device      = device,
     cfg         = evaluation_config,
-    generate_fn = vae_generate_fn,
+    generate_fn = real_generate_fn,
 )
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Sumário comparativo
 # ─────────────────────────────────────────────────────────────────────────────
@@ -176,7 +201,7 @@ print("="*60)
 
 # ── Guardar resultados ────────────────────────────────────────────────────────
 Path('histories').mkdir(exist_ok=True)
-Path('histories/evaluation_results.json').write_text(
+Path('histories/evaluation_results_real.json').write_text(
     json.dumps(all_results, indent=2)
 )
-print("\nResultados guardados em histories/evaluation_results.json")
+print("\nResultados guardados em histories/evaluation_results_real.json") 
