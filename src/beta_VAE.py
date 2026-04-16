@@ -42,7 +42,7 @@ NUM_WORKERS  = 0
 LATENT_DIM   = 128
 EPOCHS       = 300
 LR           = 1e-3
-BETA         = 0.1
+BETA         = 1
 SPATIAL_FLAT = 256 * 4 * 4  
 
 USE_SAVED_MODELS_IF_AVAILABLE = False
@@ -52,7 +52,7 @@ INDEX_COLUMN      = "train_id_original"
 
 MODEL_DIR   = Path("./models")
 HISTORY_DIR = Path("./histories")
-SAMPLES_DIR = Path("./Samples_per_epoch/low_beta(0.1)_vae_samples")
+SAMPLES_DIR = Path("./Samples_per_epoch/medium_beta(0.5)_vae_samples")
 
 def get_device() -> torch.device:
     if torch.cuda.is_available():
@@ -358,7 +358,7 @@ def evaluate_vae(model, loader, beta=BETA):
 
 
 
-def show_reconstructions(model, loader, n=8, save_path="reconstructions.png"):
+def show_reconstructions(model, loader, n=8, save_path="reconstructions_standard_beta.png"):
     model.eval()
     x, _y, _idx = next(iter(loader))
     x = x[:n].to(device)
@@ -379,7 +379,7 @@ def show_reconstructions(model, loader, n=8, save_path="reconstructions.png"):
     print(f"Saved reconstructions to {save_path}")
 
 
-def show_prior_samples(model, n=64, nrow=8, save_path="prior_samples.png"):
+def show_prior_samples(model, n=64, nrow=8, save_path="prior_samples_standard_beta.png"):
     model.eval()
     with torch.no_grad():
         z       = torch.randn(n, model.latent_dim, device=device)
