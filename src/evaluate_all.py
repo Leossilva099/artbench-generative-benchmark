@@ -26,7 +26,7 @@ from GAN import (
     HFDatasetTorch,
     generate_images,
 )
-from diffusion_final_boss import (
+from diffusion import (
     ArtBenchUNet, GaussianDiffusion, CONFIGS,
     make_cosine_schedule, generate_samples,
 )
