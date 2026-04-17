@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 PROJECT_ROOT = Path('../DATA')
 SCRIPTS_DIR  = PROJECT_ROOT / 'scripts'
 KAGGLE_ROOT  = PROJECT_ROOT / 'ArtBench-10'
-SAMPLES_DIR  = Path('./Samples_per_epoch/DCGAN')
+SAMPLES_DIR  = Path('./Samples_per_epoch/DCGAN_LS_half-lr')
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -158,7 +158,7 @@ def train_gan(generator, discriminator, loader, latent_dim,
 
     criterion = nn.BCEWithLogitsLoss()
     opt_g = torch.optim.Adam(generator.parameters(),     lr=lr, betas=(0.5, 0.999))
-    opt_d = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+    opt_d = torch.optim.Adam(discriminator.parameters(), lr=lr * 0.5, betas=(0.5, 0.999))
 
     history = {'g_loss': [], 'd_loss': []}
     generator.train()
@@ -172,7 +172,7 @@ def train_gan(generator, discriminator, loader, latent_dim,
             real = batch[0].to(device)
             bs   = real.size(0)
 
-            real_targets = torch.ones(bs, 1, device=device) 
+            real_targets = torch.ones(bs, 1, device=device)  * 0.9
             fake_targets = torch.zeros(bs, 1, device=device)
 
             # Discriminator
@@ -296,7 +296,7 @@ def get_device() -> torch.device:
 def main():
     parser = argparse.ArgumentParser(description='DCGAN for ArtBench-10')
     parser.add_argument('--mode', choices=['train', 'eval', 'plot'], default='train')
-    parser.add_argument('--checkpoint', type=str, default='models/artBenchDCGAN.pt')
+    parser.add_argument('--checkpoint', type=str, default='models/artBenchDCGAN_LS_half_lr.pt')
     parser.add_argument('--epochs',     type=int, default=300)
     parser.add_argument('--lr',         type=float, default=2e-4)
     parser.add_argument('--csv',        type=str, default='training_20_percent.csv')

@@ -82,83 +82,85 @@ all_results = {}
 # ─────────────────────────────────────────────────────────────────────────────
 # GAN
 # ─────────────────────────────────────────────────────────────────────────────
-# print("\n" + "="*60)
-# print("GAN")
-# print("="*60)
+print("\n" + "="*60)
+print("GAN")
+print("="*60)
 
-# gan_generator, gan_cfg, _ = load_dcgan_generator_for_inference('models/artBenchDCGAN_Label_Smoothing.pt')
+gan_generator, gan_cfg, _ = load_dcgan_generator_for_inference('models/artBenchDCGAN_Label_Smoothing.pt')
 
-# all_results['DCGAN_Label_Smoothing'] = run_evaluation(
-#     generator   = gan_generator,
-#     latent_dim  = gan_cfg['latent_dim'],
-#     ref_loader  = test_loader,
-#     device      = device,
-#     cfg         = evaluation_config,
-#     generate_fn = generate_images,
-# )
+all_results['DCGAN_Label_Smoothing'] = run_evaluation(
+    generator   = gan_generator,
+    latent_dim  = gan_cfg['latent_dim'],
+    ref_loader  = test_loader,
+    device      = device,
+    cfg         = evaluation_config,
+    generate_fn = generate_images,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Diffusion
 # ─────────────────────────────────────────────────────────────────────────────
-# print("\n" + "="*60)
-# print("Diffusion")
-# print("="*60)
 
-# diff_cfg = CONFIGS['medium']
-# diff_cfg.ddim_steps = 20
-# schedule  = make_cosine_schedule(diff_cfg.T, s=diff_cfg.cosine_s, device=device)
-# diffusion = GaussianDiffusion(schedule, device)
+# for config_name, ckpt_name in [
+#     ('baseline',  'baseline_final.pt'),
+#     ('cfg_w1',    'cfg_w1_final.pt'),
+#     ('cfg_w3',    'cfg_w3_final.pt'),
+#     ('cap_64',    'cap_64_final.pt'),
+# ]:
+#     print(f"\n{'='*60}\nDiffusion {config_name}\n{'='*60}")
 
-# diff_ckpt  = torch.load('models/medium_final.pt', map_location=device)
-# diff_model = ArtBenchUNet(
-#     model_channels=diff_cfg.model_channels,
-#     num_classes=diff_cfg.num_classes,
-#     use_cfg=diff_cfg.use_cfg,
-# ).to(device)
-# diff_model.load_state_dict(
-#     diff_ckpt['ema'] if diff_ckpt.get('ema') else diff_ckpt['model']
-# )
-# diff_model.eval()
+#     cfg_i = CONFIGS[config_name]
+#     cfg_i.ddim_steps = 20
+#     sched_i   = make_cosine_schedule(cfg_i.T, s=cfg_i.cosine_s, device=device)
+#     diff_i    = GaussianDiffusion(sched_i, device)
 
-# def diffusion_generate_fn(model, latent_dim, n, device, seed):
-#     return generate_samples(
-#         model=model, diffusion=diffusion, cfg=diff_cfg,
-#         device=device, n=n, batch_size=128, use_ddim=True, seed=seed,
+#     ckpt_i    = torch.load(f'models/{ckpt_name}', map_location=device, weights_only=False)
+#     model_i   = ArtBenchUNet(
+#         model_channels=cfg_i.model_channels,
+#         num_classes=cfg_i.num_classes,
+#         use_cfg=cfg_i.use_cfg,
+#     ).to(device)
+#     model_i.load_state_dict(ckpt_i['ema'] if ckpt_i.get('ema') else ckpt_i['model'])
+#     model_i.eval()
+
+#     def make_diff_fn(m, d, c):
+#         def fn(model, latent_dim, n, device, seed):
+#             return generate_samples(m, d, c, device=device, n=n, batch_size=128, use_ddim=True, seed=seed)
+#         return fn
+
+#     all_results[f'Diffusion_{config_name}_300ep'] = run_evaluation(
+#         generator   = model_i,
+#         latent_dim  = None,
+#         ref_loader  = test_loader,
+#         device      = device,
+#         cfg         = evaluation_config,
+#         generate_fn = make_diff_fn(model_i, diff_i, cfg_i),
 #     )
-
-# all_results['Diffusion_500_epochs'] = run_evaluation(
-#     generator   = diff_model,
-#     latent_dim  = None,
-#     ref_loader  = test_loader,
-#     device      = device,
-#     cfg         = evaluation_config,
-#     generate_fn = diffusion_generate_fn,
-# )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VAE
 # ─────────────────────────────────────────────────────────────────────────────
-print("\n" + "="*60)
-print("VAE")
-print("="*60)
+# print("\n" + "="*60)
+# print("VAE")
+# print("="*60)
 
-vae_model = ConvVAE(latent_dim=128).to(device)
-vae_model.load_state_dict(torch.load('models/artbench_beta_vae_1_300ep.pt', map_location=device))
-vae_model.eval()
+# vae_model = ConvVAE(latent_dim=128).to(device)
+# vae_model.load_state_dict(torch.load('models/artbench_beta_vae_1_300ep.pt', map_location=device))
+# vae_model.eval()
 
-_vae_gen = make_generate_fn(vae_model, device)
+# _vae_gen = make_generate_fn(vae_model, device)
 
-def vae_generate_fn(model, latent_dim, n, device, seed):
-    return _vae_gen(n=n, batch_size=128, seed=seed)
+# def vae_generate_fn(model, latent_dim, n, device, seed):
+#     return _vae_gen(n=n, batch_size=128, seed=seed)
 
-all_results['Beta_VAE_1_300_epochs'] = run_evaluation(
-    generator   = vae_model,
-    latent_dim  = 128,
-    ref_loader  = test_loader_vae,
-    device      = device,
-    cfg         = evaluation_config,
-    generate_fn = vae_generate_fn,
-)
+# all_results['Beta_VAE_1_300_epochs'] = run_evaluation(
+#     generator   = vae_model,
+#     latent_dim  = 128,
+#     ref_loader  = test_loader_vae,
+#     device      = device,
+#     cfg         = evaluation_config,
+#     generate_fn = vae_generate_fn,
+# )
 # ─────────────────────────────────────────────────────────────────────────────
 # Real vs Real — sanity check
 # ─────────────────────────────────────────────────────────────────────────────
