@@ -86,9 +86,9 @@ print("\n" + "="*60)
 print("GAN")
 print("="*60)
 
-gan_generator, gan_cfg, _ = load_dcgan_generator_for_inference('models/artBenchDCGAN_Label_Smoothing.pt')
+gan_generator, gan_cfg, _ = load_dcgan_generator_for_inference('models/artBenchDCGAN_LS_half_lr.pt')
 
-all_results['DCGAN_Label_Smoothing'] = run_evaluation(
+all_results['DCGAN_Label_Smoothing_Half_LR_300_epochs'] = run_evaluation(
     generator   = gan_generator,
     latent_dim  = gan_cfg['latent_dim'],
     ref_loader  = test_loader,
