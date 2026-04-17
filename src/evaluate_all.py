@@ -138,53 +138,53 @@ all_results = {}
 # ─────────────────────────────────────────────────────────────────────────────
 # VAE
 # ─────────────────────────────────────────────────────────────────────────────
-# print("\n" + "="*60)
-# print("VAE")
-# print("="*60)
+print("\n" + "="*60)
+print("VAE")
+print("="*60)
 
-# vae_model = ConvVAE(latent_dim=128).to(device)
-# vae_model.load_state_dict(torch.load('models/artbench_beta_vae_01_300ep.pt', map_location=device))
-# vae_model.eval()
+vae_model = ConvVAE(latent_dim=128).to(device)
+vae_model.load_state_dict(torch.load('models/artbench_beta_vae_1_300ep.pt', map_location=device))
+vae_model.eval()
 
-# _vae_gen = make_generate_fn(vae_model, device)
+_vae_gen = make_generate_fn(vae_model, device)
 
-# def vae_generate_fn(model, latent_dim, n, device, seed):
-#     return _vae_gen(n=n, batch_size=128, seed=seed)
+def vae_generate_fn(model, latent_dim, n, device, seed):
+    return _vae_gen(n=n, batch_size=128, seed=seed)
 
-# all_results['Beta_VAE_01_300_epochs'] = run_evaluation(
-#     generator   = vae_model,
-#     latent_dim  = 128,
-#     ref_loader  = test_loader_vae,
-#     device      = device,
-#     cfg         = evaluation_config,
-#     generate_fn = vae_generate_fn,
-# )
+all_results['Beta_VAE_1_300_epochs'] = run_evaluation(
+    generator   = vae_model,
+    latent_dim  = 128,
+    ref_loader  = test_loader_vae,
+    device      = device,
+    cfg         = evaluation_config,
+    generate_fn = vae_generate_fn,
+)
 # ─────────────────────────────────────────────────────────────────────────────
 # Real vs Real — sanity check
 # ─────────────────────────────────────────────────────────────────────────────
-print("\n" + "="*60)
-print("Real vs Real (sanity check)")
-print("="*60)
+# print("\n" + "="*60)
+# print("Real vs Real (sanity check)")
+# print("="*60)
 
-def real_generate_fn(model, latent_dim, n, device, seed):
-    torch.manual_seed(seed)
-    all_real = []
-    for batch in test_loader:
-        all_real.append(batch[0])
-        if sum(x.shape[0] for x in all_real) >= n:
-            break
-    imgs = torch.cat(all_real, dim=0)[:n]
-    idx = torch.randperm(len(imgs))
-    return imgs[idx]
+# def real_generate_fn(model, latent_dim, n, device, seed):
+#     torch.manual_seed(seed)
+#     all_real = []
+#     for batch in test_loader:
+#         all_real.append(batch[0])
+#         if sum(x.shape[0] for x in all_real) >= n:
+#             break
+#     imgs = torch.cat(all_real, dim=0)[:n]
+#     idx = torch.randperm(len(imgs))
+#     return imgs[idx]
 
-all_results['Real_vs_Real'] = run_evaluation(
-    generator   = None,
-    latent_dim  = None,
-    ref_loader  = test_loader,
-    device      = device,
-    cfg         = evaluation_config,
-    generate_fn = real_generate_fn,
-)
+# all_results['Real_vs_Real'] = run_evaluation(
+#     generator   = None,
+#     latent_dim  = None,
+#     ref_loader  = test_loader,
+#     device      = device,
+#     cfg         = evaluation_config,
+#     generate_fn = real_generate_fn,
+# )
 # ─────────────────────────────────────────────────────────────────────────────
 # Sumário comparativo
 # ─────────────────────────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ print("="*60)
 
 # ── Guardar resultados ────────────────────────────────────────────────────────
 Path('histories').mkdir(exist_ok=True)
-Path('histories/evaluation_results_real.json').write_text(
+Path('histories/evaluation_results2.json').write_text(
     json.dumps(all_results, indent=2)
 )
-print("\nResultados guardados em histories/evaluation_results_real.json") 
+print("\nResultados guardados em histories/evaluation_results2.json") 
