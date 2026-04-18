@@ -24,7 +24,7 @@ class Config:
     image_size: int = 32
     num_classes: int = 10
     batch_size: int = 128
-    num_workers: int = 0
+    num_workers: int = 4
 
     T: int = 1000
     cosine_s: float = 0.008
@@ -71,35 +71,35 @@ class Config:
 CONFIGS: dict[str, Config] = {
     "baseline": Config(
         model_channels=128, use_cfg=False, use_ema=False,
-        epochs=300, run_name="baseline"
+        epochs=500, run_name="baseline"
     ),
     "cfg_w1": Config(
         model_channels=128, use_cfg=True, cfg_scale=1.5,
-        use_ema=True, epochs=300, run_name="cfg_w1"
+        use_ema=True, epochs=500, run_name="cfg_w1"
     ),
-     "medium": Config(
+     "cfg_w2": Config(
         model_channels=128, use_cfg=True, cfg_scale=3.0,
-        use_ema=True, epochs=300, run_name="medium"
+        use_ema=True, epochs=500, run_name="cfg_w2"
     ),
     "cfg_w3": Config(
         model_channels=128, use_cfg=True, cfg_scale=5.0,
-        use_ema=True, epochs=300, run_name="cfg_w3"
+        use_ema=True, epochs=500, run_name="cfg_w3"
     ),
     "cap_64": Config(
-        model_channels=64, use_cfg=True, cfg_scale=3.0,
-        use_ema=True, epochs=300, run_name="cap_64"
+        model_channels=64, use_cfg=True, cfg_scale=5.0,
+        use_ema=True, epochs=500, run_name="cap_64"
     ),
     "cap_192": Config(
-        model_channels=192, use_cfg=True, cfg_scale=3.0,
-        use_ema=True, epochs=300, run_name="cap_192"
+        model_channels=192, use_cfg=True, cfg_scale=5.0,
+        use_ema=True, epochs=500, run_name="cap_192"
     ),
     "no_ema": Config(
         model_channels=128, use_cfg=True, cfg_scale=3.0,
-        use_ema=False, epochs=300, run_name="no_ema"
+        use_ema=False, epochs=500, run_name="no_ema"
     ),
 
     "best": Config(
-        model_channels=128, use_cfg=True, cfg_scale=4.0,
+        model_channels=128, use_cfg=True, cfg_scale=5.0,
         use_ema=True, epochs=500, batch_size=128, run_name="best"
     ),
 }
