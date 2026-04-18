@@ -24,7 +24,7 @@ class Config:
     image_size: int = 32
     num_classes: int = 10
     batch_size: int = 128
-    num_workers: int = 4
+    num_workers: int = 0
 
     T: int = 1000
     cosine_s: float = 0.008
