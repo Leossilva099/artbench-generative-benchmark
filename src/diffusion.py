@@ -94,7 +94,7 @@ CONFIGS: dict[str, Config] = {
         use_ema=True, epochs=500, run_name="cap_192"
     ),
     "no_ema": Config(
-        model_channels=128, use_cfg=True, cfg_scale=3.0,
+        model_channels=128, use_cfg=True, cfg_scale=5.0,
         use_ema=False, epochs=500, run_name="no_ema"
     ),
 

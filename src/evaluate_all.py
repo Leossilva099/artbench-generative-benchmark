@@ -128,7 +128,7 @@ for config_name, ckpt_name in [
             return generate_samples(m, d, c, device=device, n=n, batch_size=128, use_ddim=True, seed=seed)
         return fn
 
-    all_results[f'Diffusion_{config_name}_300ep'] = run_evaluation(
+    all_results[f'Diffusion_{config_name}_{cfg_i.epochs}ep'] = run_evaluation(
         generator   = model_i,
         latent_dim  = None,
         ref_loader  = test_loader,
