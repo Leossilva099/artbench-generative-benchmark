@@ -25,6 +25,7 @@ from GAN import (
     load_dcgan_generator_for_inference,
     HFDatasetTorch,
     generate_images,
+    DCGenerator,
 )
 from diffusion import (
     ArtBenchUNet, GaussianDiffusion, CONFIGS,
@@ -82,60 +83,64 @@ all_results = {}
 # ─────────────────────────────────────────────────────────────────────────────
 # GAN
 # ─────────────────────────────────────────────────────────────────────────────
-# print("\n" + "="*60)
-# print("GAN")
-# print("="*60)
+print("\n" + "="*60)
+print("GAN")
+print("="*60)
 
-# gan_generator, gan_cfg, _ = load_dcgan_generator_for_inference('models/artBenchDCGAN_LS_quarter_lr.pt')
+ckpt = torch.load('models/artBenchDCGAN_LS_half_lr_ngf128.pt', map_location=device, weights_only=False)
+gan_cfg = ckpt['config']
+gan_generator = DCGenerator(latent_dim=gan_cfg['latent_dim'], image_channels=gan_cfg['channels'], ngf=128).to(device)
+gan_generator.load_state_dict(ckpt['generator'])
+gan_generator.eval()
 
-# all_results['DCGAN_Label_Smoothing_Quarter_LR_300_epochs'] = run_evaluation(
-#     generator   = gan_generator,
-#     latent_dim  = gan_cfg['latent_dim'],
-#     ref_loader  = test_loader,
-#     device      = device,
-#     cfg         = evaluation_config,
-#     generate_fn = generate_images,
-# )
+all_results['DCGAN_LS_HalfLR_ngf128_300_epochs'] = run_evaluation(
+    generator   = gan_generator,
+    latent_dim  = gan_cfg['latent_dim'],
+    ref_loader  = test_loader,
+    device      = device,
+    cfg         = evaluation_config,
+    generate_fn = generate_images,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Diffusion
 # ─────────────────────────────────────────────────────────────────────────────
 
-for config_name, ckpt_name in [
-    ('baseline',  'baseline_final.pt'),
-    ('cfg_w1',    'cfg_w1_final.pt'),
-    ('cfg_w3',    'cfg_w3_final.pt'),
-    ('cap_64',    'cap_64_final.pt'),
-]:
-    print(f"\n{'='*60}\nDiffusion {config_name}\n{'='*60}")
+# for config_name, ckpt_name in [
+#     ('baseline',  'baseline_final.pt'),
+#     ('cfg_w1',    'cfg_w1_final.pt'),
+#     ('cfg_w3',    'cfg_w3_final.pt'),
+#     ('cap_64',    'cap_64_final.pt'),
+# ]:
+#     print(f"\n{'='*60}\nDiffusion {config_name}\n{'='*60}")
 
-    cfg_i = CONFIGS[config_name]
-    cfg_i.ddim_steps = 20
-    sched_i   = make_cosine_schedule(cfg_i.T, s=cfg_i.cosine_s, device=device)
-    diff_i    = GaussianDiffusion(sched_i, device)
+#     cfg_i = CONFIGS[config_name]
+#     cfg_i.ddim_steps = 20
+#     sched_i   = make_cosine_schedule(cfg_i.T, s=cfg_i.cosine_s, device=device)
+#     diff_i    = GaussianDiffusion(sched_i, device)
 
-    ckpt_i    = torch.load(f'models/{ckpt_name}', map_location=device, weights_only=False)
-    model_i   = ArtBenchUNet(
-        model_channels=cfg_i.model_channels,
-        num_classes=cfg_i.num_classes,
-        use_cfg=cfg_i.use_cfg,
-    ).to(device)
-    model_i.load_state_dict(ckpt_i['ema'] if ckpt_i.get('ema') else ckpt_i['model'])
-    model_i.eval()
+#     ckpt_i    = torch.load(f'models/{ckpt_name}', map_location=device, weights_only=False)
+#     model_i   = ArtBenchUNet(
+#         model_channels=cfg_i.model_channels,
+#         num_classes=cfg_i.num_classes,
+#         use_cfg=cfg_i.use_cfg,
+#     ).to(device)
+#     model_i.load_state_dict(ckpt_i['ema'] if ckpt_i.get('ema') else ckpt_i['model'])
+#     model_i.eval()
 
-    def make_diff_fn(m, d, c):
-        def fn(model, latent_dim, n, device, seed):
-            return generate_samples(m, d, c, device=device, n=n, batch_size=128, use_ddim=True, seed=seed)
-        return fn
+#     def make_diff_fn(m, d, c):
+#         def fn(model, latent_dim, n, device, seed):
+#             return generate_samples(m, d, c, device=device, n=n, batch_size=128, use_ddim=True, seed=seed)
+#         return fn
 
-    all_results[f'Diffusion_{config_name}_{cfg_i.epochs}ep'] = run_evaluation(
-        generator   = model_i,
-        latent_dim  = None,
-        ref_loader  = test_loader,
-        device      = device,
-        cfg         = evaluation_config,
-        generate_fn = make_diff_fn(model_i, diff_i, cfg_i),
-    )
+#     all_results[f'Diffusion_{config_name}_{cfg_i.epochs}ep'] = run_evaluation(
+#         generator   = model_i,
+#         latent_dim  = None,
+#         ref_loader  = test_loader,
+#         device      = device,
+#         cfg         = evaluation_config,
+#         generate_fn = make_diff_fn(model_i, diff_i, cfg_i),
+#     )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VAE
