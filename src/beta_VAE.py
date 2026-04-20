@@ -52,7 +52,7 @@ INDEX_COLUMN      = "train_id_original"
 
 MODEL_DIR   = Path("./models")
 HISTORY_DIR = Path("./histories")
-SAMPLES_DIR = Path("./Samples_per_epoch/low_beta(0.1)_vae_latent64_samples")
+SAMPLES_DIR = Path("./Samples_per_epoch/low_beta(0.1)_vae_latent256_samples")
 
 def get_device() -> torch.device:
     if torch.cuda.is_available():
