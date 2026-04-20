@@ -87,13 +87,13 @@ print("\n" + "="*60)
 print("GAN")
 print("="*60)
 
-ckpt = torch.load('models/artBenchDCGAN_LS_half_lr_ngf128.pt', map_location=device, weights_only=False)
+ckpt = torch.load('models/artBenchDCGAN_LS_halfLR_ngf256.pt', map_location=device, weights_only=False)
 gan_cfg = ckpt['config']
-gan_generator = DCGenerator(latent_dim=gan_cfg['latent_dim'], image_channels=gan_cfg['channels'], ngf=128).to(device)
+gan_generator = DCGenerator(latent_dim=gan_cfg['latent_dim'], image_channels=gan_cfg['channels'], ngf=256).to(device)
 gan_generator.load_state_dict(ckpt['generator'])
 gan_generator.eval()
 
-all_results['DCGAN_LS_HalfLR_ngf128_300_epochs'] = run_evaluation(
+all_results['DCGAN_LS_HalfLR_ngf256_300_epochs'] = run_evaluation(
     generator   = gan_generator,
     latent_dim  = gan_cfg['latent_dim'],
     ref_loader  = test_loader,
