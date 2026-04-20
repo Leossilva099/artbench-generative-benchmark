@@ -113,7 +113,18 @@ all_results['DCGAN_LS_HalfLR_ngf128_300_epochs'] = run_evaluation(
 #     ('cap_64',    'cap_64_final.pt'),
 # ]:
 #     print(f"\n{'='*60}\nDiffusion {config_name}\n{'='*60}")
+# for config_name, ckpt_name in [
+#     ('baseline',  'baseline_final.pt'),
+#     ('cfg_w1',    'cfg_w1_final.pt'),
+#     ('cfg_w3',    'cfg_w3_final.pt'),
+#     ('cap_64',    'cap_64_final.pt'),
+# ]:
+#     print(f"\n{'='*60}\nDiffusion {config_name}\n{'='*60}")
 
+#     cfg_i = CONFIGS[config_name]
+#     cfg_i.ddim_steps = 20
+#     sched_i   = make_cosine_schedule(cfg_i.T, s=cfg_i.cosine_s, device=device)
+#     diff_i    = GaussianDiffusion(sched_i, device)
 #     cfg_i = CONFIGS[config_name]
 #     cfg_i.ddim_steps = 20
 #     sched_i   = make_cosine_schedule(cfg_i.T, s=cfg_i.cosine_s, device=device)
@@ -127,7 +138,19 @@ all_results['DCGAN_LS_HalfLR_ngf128_300_epochs'] = run_evaluation(
 #     ).to(device)
 #     model_i.load_state_dict(ckpt_i['ema'] if ckpt_i.get('ema') else ckpt_i['model'])
 #     model_i.eval()
+#     ckpt_i    = torch.load(f'models/{ckpt_name}', map_location=device, weights_only=False)
+#     model_i   = ArtBenchUNet(
+#         model_channels=cfg_i.model_channels,
+#         num_classes=cfg_i.num_classes,
+#         use_cfg=cfg_i.use_cfg,
+#     ).to(device)
+#     model_i.load_state_dict(ckpt_i['ema'] if ckpt_i.get('ema') else ckpt_i['model'])
+#     model_i.eval()
 
+#     def make_diff_fn(m, d, c):
+#         def fn(model, latent_dim, n, device, seed):
+#             return generate_samples(m, d, c, device=device, n=n, batch_size=128, use_ddim=True, seed=seed)
+#         return fn
 #     def make_diff_fn(m, d, c):
 #         def fn(model, latent_dim, n, device, seed):
 #             return generate_samples(m, d, c, device=device, n=n, batch_size=128, use_ddim=True, seed=seed)

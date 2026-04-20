@@ -159,6 +159,7 @@ def train_gan(generator, discriminator, loader, latent_dim,
     criterion = nn.BCEWithLogitsLoss()
     opt_g = torch.optim.Adam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
     opt_d = torch.optim.Adam(discriminator.parameters(), lr=lr * 0.5, betas=(0.5, 0.999))
+    opt_d = torch.optim.Adam(discriminator.parameters(), lr=lr * 0.5, betas=(0.5, 0.999))
 
     history = {'g_loss': [], 'd_loss': []}
     generator.train()
