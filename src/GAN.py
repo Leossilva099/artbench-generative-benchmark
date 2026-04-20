@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 PROJECT_ROOT = Path('../DATA')
 SCRIPTS_DIR  = PROJECT_ROOT / 'scripts'
 KAGGLE_ROOT  = PROJECT_ROOT / 'ArtBench-10'
-SAMPLES_DIR  = Path('./Samples_per_epoch/DCGAN_LS_quarter_lr')
+SAMPLES_DIR  = Path('./Samples_per_epoch/DCGAN_LS_half_lr_ngf256')
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -51,7 +51,7 @@ transform = T.Compose([
     T.Resize(IMAGE_SIZE, interpolation=T.InterpolationMode.BILINEAR),
     T.CenterCrop(IMAGE_SIZE),
     T.ToTensor(),
-    T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),   # [-1, 1]
+    T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  
 ])
 
 
@@ -158,7 +158,7 @@ def train_gan(generator, discriminator, loader, latent_dim,
 
     criterion = nn.BCEWithLogitsLoss()
     opt_g = torch.optim.Adam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
-    opt_d = torch.optim.Adam(discriminator.parameters(), lr=lr * 0.25, betas=(0.5, 0.999))
+    opt_d = torch.optim.Adam(discriminator.parameters(), lr=lr * 0.5, betas=(0.5, 0.999))
 
     history = {'g_loss': [], 'd_loss': []}
     generator.train()
@@ -296,7 +296,7 @@ def get_device() -> torch.device:
 def main():
     parser = argparse.ArgumentParser(description='DCGAN for ArtBench-10')
     parser.add_argument('--mode', choices=['train', 'eval', 'plot'], default='train')
-    parser.add_argument('--checkpoint', type=str, default='models/artBenchDCGAN_LS_quarter_lr.pt')
+    parser.add_argument('--checkpoint', type=str, default='models/artBenchDCGAN_LS_halfLR_ngf256.pt')
     parser.add_argument('--epochs',     type=int, default=300)
     parser.add_argument('--lr',         type=float, default=2e-4)
     parser.add_argument('--csv',        type=str, default='training_20_percent.csv')
@@ -322,8 +322,8 @@ def main():
     if args.mode == 'train':
         latent_dim    = 100
         channels      = 3
-        generator     = DCGenerator(latent_dim, channels).to(device)
-        discriminator = DCDiscriminator(channels).to(device)
+        generator     = DCGenerator(latent_dim, channels,ngf=256).to(device)
+        discriminator = DCDiscriminator(channels,ndf=256).to(device)
         generator.apply(init_dcgan_weights)
         discriminator.apply(init_dcgan_weights)
 
