@@ -83,24 +83,24 @@ all_results = {}
 # ─────────────────────────────────────────────────────────────────────────────
 # GAN
 # ─────────────────────────────────────────────────────────────────────────────
-print("\n" + "="*60)
-print("GAN")
-print("="*60)
+# print("\n" + "="*60)
+# print("GAN")
+# print("="*60)
 
-ckpt = torch.load('models/artBenchDCGAN_LS_halfLR_ngf256.pt', map_location=device, weights_only=False)
-gan_cfg = ckpt['config']
-gan_generator = DCGenerator(latent_dim=gan_cfg['latent_dim'], image_channels=gan_cfg['channels'], ngf=256).to(device)
-gan_generator.load_state_dict(ckpt['generator'])
-gan_generator.eval()
+# ckpt = torch.load('models/artBenchDCGAN_LS_halfLR_ngf256.pt', map_location=device, weights_only=False)
+# gan_cfg = ckpt['config']
+# gan_generator = DCGenerator(latent_dim=gan_cfg['latent_dim'], image_channels=gan_cfg['channels'], ngf=256).to(device)
+# gan_generator.load_state_dict(ckpt['generator'])
+# gan_generator.eval()
 
-all_results['DCGAN_LS_HalfLR_ngf256_300_epochs'] = run_evaluation(
-    generator   = gan_generator,
-    latent_dim  = gan_cfg['latent_dim'],
-    ref_loader  = test_loader,
-    device      = device,
-    cfg         = evaluation_config,
-    generate_fn = generate_images,
-)
+# all_results['DCGAN_LS_HalfLR_ngf256_300_epochs'] = run_evaluation(
+#     generator   = gan_generator,
+#     latent_dim  = gan_cfg['latent_dim'],
+#     ref_loader  = test_loader,
+#     device      = device,
+#     cfg         = evaluation_config,
+#     generate_fn = generate_images,
+# )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Diffusion
@@ -168,27 +168,27 @@ all_results['DCGAN_LS_HalfLR_ngf256_300_epochs'] = run_evaluation(
 # ─────────────────────────────────────────────────────────────────────────────
 # VAE
 # ─────────────────────────────────────────────────────────────────────────────
-# print("\n" + "="*60)
-# print("VAE")
-# print("="*60)
+print("\n" + "="*60)
+print("VAE")
+print("="*60)
 
-# vae_model = ConvVAE(latent_dim=128).to(device)
-# vae_model.load_state_dict(torch.load('models/artbench_beta_vae_1_300ep.pt', map_location=device))
-# vae_model.eval()
+vae_model = ConvVAE(latent_dim=64).to(device)
+vae_model.load_state_dict(torch.load('models/artbench_beta_vae_01_latent64.pt', map_location=device))
+vae_model.eval()
 
-# _vae_gen = make_generate_fn(vae_model, device)
+_vae_gen = make_generate_fn(vae_model, device)
 
-# def vae_generate_fn(model, latent_dim, n, device, seed):
-#     return _vae_gen(n=n, batch_size=128, seed=seed)
+def vae_generate_fn(model, latent_dim, n, device, seed):
+    return _vae_gen(n=n, batch_size=128, seed=seed)
 
-# all_results['Beta_VAE_1_300_epochs'] = run_evaluation(
-#     generator   = vae_model,
-#     latent_dim  = 128,
-#     ref_loader  = test_loader_vae,
-#     device      = device,
-#     cfg         = evaluation_config,
-#     generate_fn = vae_generate_fn,
-# )
+all_results['Beta_VAE_beta01_latent64_300_epochs'] = run_evaluation(
+    generator   = vae_model,
+    latent_dim  = 64,
+    ref_loader  = test_loader_vae,
+    device      = device,
+    cfg         = evaluation_config,
+    generate_fn = vae_generate_fn,
+)
 # ─────────────────────────────────────────────────────────────────────────────
 # Real vs Real — sanity check
 # ─────────────────────────────────────────────────────────────────────────────
