@@ -300,7 +300,7 @@ def main():
     parser.add_argument('--checkpoint', type=str, default='models/artBenchDCGAN_LS_halfLR_ngf256.pt')
     parser.add_argument('--epochs',     type=int, default=300)
     parser.add_argument('--lr',         type=float, default=2e-4)
-    parser.add_argument('--csv',        type=str, default='training_20_percent.csv')
+    parser.add_argument('--csv',        type=str, default='../DATA/training_20_percent.csv')
     args = parser.parse_args()
 
     device = get_device()

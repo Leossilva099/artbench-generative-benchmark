@@ -47,7 +47,7 @@ SPATIAL_FLAT = 256 * 4 * 4
 
 USE_SAVED_MODELS_IF_AVAILABLE = False
 
-TRAINING_CSV_PATH = Path("training_20_percent.csv")
+TRAINING_CSV_PATH = Path("../DATA/training_20_percent.csv")
 INDEX_COLUMN      = "train_id_original"
 
 MODEL_DIR   = Path("./models")

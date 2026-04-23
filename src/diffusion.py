@@ -9,7 +9,6 @@ import sys
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 import numpy as np
 import torch
 import torch.nn as nn
@@ -51,7 +50,7 @@ class Config:
     ddim_eta: float = 0.0
 
     project_root = "../DATA"
-    subset_csv = "training_20_percent.csv"
+    subset_csv = "../DATA/training_20_percent.csv"
     model_dir = "models"
     history_dir = "histories"
     sample_dir = "samples"
@@ -97,7 +96,6 @@ CONFIGS: dict[str, Config] = {
         model_channels=128, use_cfg=True, cfg_scale=5.0,
         use_ema=False, epochs=500, run_name="no_ema"
     ),
-
     "best": Config(
         model_channels=128, use_cfg=True, cfg_scale=5.0,
         use_ema=True, epochs=500, batch_size=128, run_name="best"
@@ -345,7 +343,7 @@ class SelfAttention(nn.Module):
 
 
 class ArtBenchUNet(nn.Module):
-    def __init__(self, in_channels=3, model_channels=128, channel_mult=(1, 2, 4), num_res_blocks=2, num_classes=10, use_cfg=True, use_attention=True):
+    def __init__(self, in_channels=3, model_channels=128, num_res_blocks=2, num_classes=10, use_cfg=True, use_attention=True):
         super().__init__()
         self.num_classes = num_classes
         self.use_cfg = use_cfg
@@ -626,7 +624,6 @@ def main():
     model = ArtBenchUNet(
         in_channels=3,
         model_channels=cfg.model_channels,
-        channel_mult=cfg.channel_mult,
         num_res_blocks=cfg.num_res_blocks,
         num_classes=cfg.num_classes,
         use_cfg=cfg.use_cfg,
