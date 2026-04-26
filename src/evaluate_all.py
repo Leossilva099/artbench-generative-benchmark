@@ -178,8 +178,7 @@ for model_name, res in all_results.items():
     )
 print("="*60)
 
-Path('histories').mkdir(exist_ok=True)
-Path('histories/evaluation_results2.json').write_text(
+Path('evaluation_results.json').write_text(
     json.dumps(all_results, indent=2)
 )
-print("\nResultados guardados em histories/evaluation_results2.json") 
+print("\nResultados guardados em evaluation_results.json") 

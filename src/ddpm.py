@@ -366,9 +366,7 @@ class ArtBenchUNet(nn.Module):
         self.down0 = nn.ModuleList([ResBlock(C, C, t_dim) for _ in range(num_res_blocks)])
         self.pool0 = nn.Conv2d(C, C, 3, stride=2, padding=1)
 
-        self.down1 = nn.ModuleList(
-            [ResBlock(C if i == 0 else C * 2, C * 2, t_dim) for i in range(num_res_blocks)]
-        )
+        self.down1 = nn.ModuleList([ResBlock(C if i == 0 else C * 2, C * 2, t_dim) for i in range(num_res_blocks)])
         self.pool1 = nn.Conv2d(C * 2, C * 2, 3, stride=2, padding=1)
 
         self.mid0 = ResBlock(C * 2, C * 4, t_dim)
@@ -376,14 +374,10 @@ class ArtBenchUNet(nn.Module):
         self.mid1 = ResBlock(C * 4, C * 4, t_dim)
 
         self.up1_conv = nn.ConvTranspose2d(C * 4, C * 2, 4, stride=2, padding=1)
-        self.up1 = nn.ModuleList(
-            [ResBlock(C * 4 if i == 0 else C * 2, C * 2, t_dim) for i in range(num_res_blocks)]
-        )
+        self.up1 = nn.ModuleList([ResBlock(C * 4 if i == 0 else C * 2, C * 2, t_dim) for i in range(num_res_blocks)])
 
         self.up0_conv = nn.ConvTranspose2d(C * 2, C, 4, stride=2, padding=1)
-        self.up0 = nn.ModuleList(
-            [ResBlock(C * 2 if i == 0 else C, C, t_dim) for i in range(num_res_blocks)]
-        )
+        self.up0 = nn.ModuleList([ResBlock(C * 2 if i == 0 else C, C, t_dim) for i in range(num_res_blocks)])
 
         self.out_norm = nn.GroupNorm(8, C)
         self.out_conv = nn.Conv2d(C, in_channels, 3, padding=1)

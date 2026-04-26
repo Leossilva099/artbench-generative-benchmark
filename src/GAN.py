@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 PROJECT_ROOT = Path('../DATA')
 SCRIPTS_DIR  = PROJECT_ROOT / 'scripts'
 KAGGLE_ROOT  = PROJECT_ROOT / 'ArtBench-10'
-SAMPLES_DIR  = Path('./Samples_per_epoch/DCGAN_LS_half_lr_ngf256')
+SAMPLES_DIR  = Path('./samples/DCGAN_LS_half_lr_ngf256')
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -55,7 +55,7 @@ class HFDatasetTorch(Dataset):
         return x, y, real_idx
 
 
-def make_subset_indices(n_total: int, fraction: float, seed: int = 42) -> list:
+def make_subset_indices(n_total, fraction, seed = 42):
     n_keep = max(1, int(round(n_total * fraction)))
     g   = np.random.RandomState(seed)
     idx = np.arange(n_total)
@@ -63,7 +63,7 @@ def make_subset_indices(n_total: int, fraction: float, seed: int = 42) -> list:
     return idx[:n_keep].tolist()
 
 
-def load_ids_from_training_csv(csv_path: Path, index_column: str = 'train_id_original') -> list[int]:
+def load_ids_from_training_csv(csv_path, index_column = 'train_id_original'):
     csv_path = Path(csv_path)
     if not csv_path.exists():
         raise FileNotFoundError(f'training.csv not found: {csv_path}')
@@ -129,8 +129,7 @@ def init_dcgan_weights(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-def train_gan(generator, discriminator, loader, latent_dim,
-              epochs=300, lr=2e-4, device='cpu', samples_dir=SAMPLES_DIR):
+def train_gan(generator, discriminator, loader, latent_dim,epochs=300, lr=2e-4, device='cpu', samples_dir=SAMPLES_DIR):
     samples_dir = Path(samples_dir)
     samples_dir.mkdir(parents=True, exist_ok=True)
 
@@ -193,8 +192,7 @@ def train_gan(generator, discriminator, loader, latent_dim,
     return history
 
 
-def save_checkpoint(generator, discriminator, history, checkpoint_path,
-                    latent_dim, channels, image_size):
+def save_checkpoint(generator, discriminator, history, checkpoint_path,latent_dim, channels, image_size):
     checkpoint_path = Path(checkpoint_path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
@@ -258,7 +256,7 @@ def plot_gan_losses(history, title='GAN losses'):
     plt.show()
 
 
-def get_device() -> torch.device:
+def get_device():
     if torch.cuda.is_available():
         return torch.device('cuda')
     if torch.backends.mps.is_available() and torch.backends.mps.is_built():

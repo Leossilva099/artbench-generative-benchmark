@@ -47,7 +47,7 @@ MODEL_DIR   = Path("./models")
 HISTORY_DIR = Path("./histories")
 SAMPLES_DIR = Path("./Samples_per_epoch/low_beta(0.1)_vae_latent256_samples")
 
-def get_device() -> torch.device:
+def get_device():
     if torch.cuda.is_available():
         return torch.device("cuda")
     if torch.backends.mps.is_available() and torch.backends.mps.is_built():
@@ -56,7 +56,7 @@ def get_device() -> torch.device:
 
 device = get_device()
 
-def safe_num_workers(requested: int) -> int:
+def safe_num_workers(requested):
     if "ipykernel" in sys.modules and int(requested) > 0:
         print("Notebook kernel detected: forcing num_workers=0 for DataLoader stability.")
         return 0
@@ -81,7 +81,7 @@ class HFDatasetTorch(Dataset):
         return x, y, real_idx
 
 
-def make_subset_indices(n_total: int, fraction: float, seed: int = 42):
+def make_subset_indices(n_total, fraction, seed = 42):
     n_keep = max(1, int(round(n_total * fraction)))
     g = np.random.RandomState(seed)
     idx = np.arange(n_total)
@@ -89,9 +89,7 @@ def make_subset_indices(n_total: int, fraction: float, seed: int = 42):
     return idx[:n_keep].tolist()
 
 
-def load_ids_from_training_csv(
-    csv_path: Path, index_column: str = "train_id_original"
-) -> list[int]:
+def load_ids_from_training_csv(csv_path, index_column = "train_id_original"):
     csv_path = Path(csv_path)
     if not csv_path.exists():
         raise FileNotFoundError(
@@ -133,22 +131,18 @@ def show_batch_grid(loader, class_names, n_images=36, nrow=6, title="Sample Grid
     print("Labels:", labels_str)
 
 
-def _artifact_stem(run_name: str) -> str:
+def _artifact_stem(run_name):
     stem = "".join(ch.lower() if ch.isalnum() else "_" for ch in run_name)
     stem = "_".join(part for part in stem.split("_") if part)
     return stem or "model"
 
 
-def _artifact_paths(run_name: str):
+def _artifact_paths(run_name):
     stem = _artifact_stem(run_name)
     return MODEL_DIR / f"{stem}.pt", HISTORY_DIR / f"{stem}.json"
 
 
-def fit_or_load_model(
-    model, run_name, train_fn,
-    load_if_available=USE_SAVED_MODELS_IF_AVAILABLE,
-    **train_kwargs,
-):
+def fit_or_load_model(model, run_name, train_fn,load_if_available=USE_SAVED_MODELS_IF_AVAILABLE,**train_kwargs,):
     model_path, history_path = _artifact_paths(run_name)
 
     if load_if_available and model_path.exists():
@@ -175,7 +169,7 @@ def fit_or_load_model(
 
 
 class ConvVAE(nn.Module):
-    def __init__(self, latent_dim: int = LATENT_DIM):
+    def __init__(self, latent_dim = LATENT_DIM):
         super().__init__()
         self.latent_dim = latent_dim
 
@@ -242,12 +236,12 @@ class ConvVAE(nn.Module):
         return xhat, mu, logvar
 
     @torch.no_grad()
-    def sample(self, n: int, device: torch.device):
+    def sample(self, n, device):
         z = torch.randn(n, self.latent_dim, device=device)
         return self.decode(z)
 
 
-def vae_loss(xhat, x, mu, logvar, beta: float = 1.0):
+def vae_loss(xhat, x, mu, logvar, beta = 1.0):
     B = x.size(0)
     recon = F.mse_loss(xhat, x, reduction="sum") / B
     kl = -0.5 * torch.sum(1.0 + logvar - mu.pow(2) - logvar.exp()) / B
@@ -378,9 +372,9 @@ def show_prior_samples(model, n=64, nrow=8, save_path="prior_samples_standard_be
     plt.close()
     print(f"Saved prior samples to {save_path}")
 
-def make_generate_fn(model: ConvVAE, device: torch.device):
+def make_generate_fn(model, device):
     @torch.no_grad()
-    def generate_fn(n: int, batch_size: int, seed: int) -> torch.Tensor:
+    def generate_fn(n: int, batch_size: int, seed: int):
         torch.manual_seed(seed)
         model.eval()
         chunks = []
