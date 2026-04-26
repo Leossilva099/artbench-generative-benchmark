@@ -1,10 +1,3 @@
-"""
-evaluate_all.py
-===============
-Avalia GAN, Diffusion e VAE com o mesmo protocolo (metrics.py).
-Resultados guardados em histories/evaluation_results.json
-"""
-
 import json
 import sys
 from pathlib import Path
@@ -27,7 +20,7 @@ from GAN import (
     generate_images,
     DCGenerator,
 )
-from diffusion import (
+from ddpm import (
     ArtBenchUNet, GaussianDiffusion, CONFIGS,
     make_cosine_schedule, generate_samples,
 )
@@ -189,9 +182,7 @@ for config_name, ckpt_name in [
 #     cfg         = evaluation_config,
 #     generate_fn = real_generate_fn,
 # )
-# ─────────────────────────────────────────────────────────────────────────────
-# Sumário comparativo
-# ─────────────────────────────────────────────────────────────────────────────
+
 print("\n" + "="*60)
 print(f"{'MODELO':>15s}  {'FID':>12s}  {'KID':>15s}")
 print("="*60)
@@ -203,7 +194,6 @@ for model_name, res in all_results.items():
     )
 print("="*60)
 
-# ── Guardar resultados ────────────────────────────────────────────────────────
 Path('histories').mkdir(exist_ok=True)
 Path('histories/evaluation_results2.json').write_text(
     json.dumps(all_results, indent=2)

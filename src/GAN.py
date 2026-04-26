@@ -1,17 +1,3 @@
-"""
-GAN.py
-==============
-DCGAN para ArtBench-10 (32x32).
-
-Uso:
-    # Treinar
-    python3 GAN.py --mode train
-
-    # Avaliar checkpoint existente
-    python3 GAN.py --mode eval --checkpoint models/artBenchDCGAN.pt
-"""
-
-
 import argparse
 import csv
 import random
@@ -27,7 +13,6 @@ from torchvision.utils import make_grid, save_image
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path('../DATA')
 SCRIPTS_DIR  = PROJECT_ROOT / 'scripts'
 KAGGLE_ROOT  = PROJECT_ROOT / 'ArtBench-10'
@@ -36,17 +21,15 @@ SAMPLES_DIR  = Path('./Samples_per_epoch/DCGAN_LS_half_lr_ngf256')
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-# ── Config ────────────────────────────────────────────────────────────────────
-SEED       = 42
+SEED = 42
 IMAGE_SIZE = 32
 BATCH_SIZE = 64
-NUM_WORKERS= 0
+NUM_WORKERS = 0
 
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
-# ── Transform ─────────────────────────────────────────────────────────────────
 transform = T.Compose([
     T.Resize(IMAGE_SIZE, interpolation=T.InterpolationMode.BILINEAR),
     T.CenterCrop(IMAGE_SIZE),
@@ -54,8 +37,6 @@ transform = T.Compose([
     T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  
 ])
 
-
-# ── Dataset ───────────────────────────────────────────────────────────────────
 class HFDatasetTorch(Dataset):
     def __init__(self, hf_split, transform=None, indices=None):
         self.ds        = hf_split
@@ -82,8 +63,7 @@ def make_subset_indices(n_total: int, fraction: float, seed: int = 42) -> list:
     return idx[:n_keep].tolist()
 
 
-def load_ids_from_training_csv(csv_path: Path,
-                                index_column: str = 'train_id_original') -> list[int]:
+def load_ids_from_training_csv(csv_path: Path, index_column: str = 'train_id_original') -> list[int]:
     csv_path = Path(csv_path)
     if not csv_path.exists():
         raise FileNotFoundError(f'training.csv not found: {csv_path}')
@@ -101,7 +81,6 @@ def load_ids_from_training_csv(csv_path: Path,
     return ids
 
 
-# ── Architecture ──────────────────────────────────────────────────────────────
 class DCGenerator(nn.Module):
     def __init__(self, latent_dim=100, image_channels=3, ngf=64):
         super().__init__()
@@ -150,7 +129,6 @@ def init_dcgan_weights(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-# ── Training ──────────────────────────────────────────────────────────────────
 def train_gan(generator, discriminator, loader, latent_dim,
               epochs=300, lr=2e-4, device='cpu', samples_dir=SAMPLES_DIR):
     samples_dir = Path(samples_dir)
@@ -215,7 +193,6 @@ def train_gan(generator, discriminator, loader, latent_dim,
     return history
 
 
-# ── Checkpoint helpers ────────────────────────────────────────────────────────
 def save_checkpoint(generator, discriminator, history, checkpoint_path,
                     latent_dim, channels, image_size):
     checkpoint_path = Path(checkpoint_path)
@@ -245,7 +222,6 @@ def load_dcgan_generator_for_inference(checkpoint_path, device=None):
     return gen, cfg, ckpt.get('history', None)
 
 
-# ── Sampling ──────────────────────────────────────────────────────────────────
 @torch.no_grad()
 def generate_images(generator, latent_dim, n_samples, device, seed):
     torch.manual_seed(seed)
@@ -254,7 +230,6 @@ def generate_images(generator, latent_dim, n_samples, device, seed):
     return generator(z).cpu()
 
 
-# ── Visualisation ─────────────────────────────────────────────────────────────
 def show_image_grid(images, title=None, nrow=8, figsize=(8, 8), cmap='gray'):
     images   = images.detach().cpu().float()
     images   = (images * 0.5 + 0.5).clamp(0, 1)
@@ -284,7 +259,6 @@ def plot_gan_losses(history, title='GAN losses'):
     plt.show()
 
 
-# ── Device ────────────────────────────────────────────────────────────────────
 def get_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device('cuda')
@@ -293,7 +267,6 @@ def get_device() -> torch.device:
     return torch.device('cpu')
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(description='DCGAN for ArtBench-10')
     parser.add_argument('--mode', choices=['train', 'eval', 'plot'], default='train')
@@ -341,8 +314,7 @@ def main():
 
         test_hf  = hf_ds['test']
         test_ds  = HFDatasetTorch(test_hf, transform=transform)
-        test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=True,
-                                 num_workers=NUM_WORKERS)
+        test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
         evaluation_config = {
             'fid_kid_samples':    5000,

@@ -1,8 +1,7 @@
-import torch, sys
+import torch
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
-from diffusion import CONFIGS, make_cosine_schedule, GaussianDiffusion, ArtBenchUNet
+from ddpm import CONFIGS, make_cosine_schedule, GaussianDiffusion, ArtBenchUNet
 
 device = torch.device('mps')
 cfg = CONFIGS['best']

@@ -1,20 +1,10 @@
-"""
-metrics.py — FID / KID evaluation for generative models
-Usage:
-    from metrics import run_evaluation
-    results = run_evaluation(generator, latent_dim, test_loader, device, cfg)
-"""
-
 import numpy as np
 from scipy import linalg
 import torch
 from torchvision.models import inception_v3, Inception_V3_Weights
 
 
-# ── InceptionV3 ───────────────────────────────────────────────────────────────
-
 def load_inception(device: torch.device):
-    """Load InceptionV3 with the classification head removed."""
     model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
     model.fc = torch.nn.Identity()
     model.eval().to(device)
@@ -22,21 +12,12 @@ def load_inception(device: torch.device):
 
 
 @torch.no_grad()
-def get_inception_features(images: torch.Tensor, model, device,
-                            batch_size: int = 32) -> np.ndarray:
-    """
-    Extract InceptionV3 features from a tensor of images.
-
-    Accepts images in [-1, 1] (Tanh output) or [0, 1] (ToTensor output).
-    Automatically converts to [0, 1] before passing to InceptionV3.
-    """
+def get_inception_features(images: torch.Tensor, model, device, batch_size: int = 32):
     imgs = images.float()
     if imgs.min() < 0:
-        imgs = (imgs * 0.5 + 0.5).clamp(0, 1)   # [-1, 1] → [0, 1]
+        imgs = (imgs * 0.5 + 0.5).clamp(0, 1)
 
-    imgs = torch.nn.functional.interpolate(
-        imgs, size=(299, 299), mode='bilinear', align_corners=False
-    )
+    imgs = torch.nn.functional.interpolate(imgs, size=(299, 299), mode='bilinear', align_corners=False)
 
     feats = []
     for i in range(0, len(imgs), batch_size):
@@ -44,13 +25,8 @@ def get_inception_features(images: torch.Tensor, model, device,
     return np.concatenate(feats, axis=0)
 
 
-# ── FID ───────────────────────────────────────────────────────────────────────
-
-def compute_fid(real_feats: np.ndarray, fake_feats: np.ndarray) -> float:
-    """
-    Fréchet Inception Distance.
-    Lower = better quality + diversity.
-    """
+# FID 
+def compute_fid(real_feats: np.ndarray, fake_feats: np.ndarray):
     mu1, sigma1 = real_feats.mean(0), np.cov(real_feats, rowvar=False)
     mu2, sigma2 = fake_feats.mean(0), np.cov(fake_feats, rowvar=False)
 
@@ -62,15 +38,8 @@ def compute_fid(real_feats: np.ndarray, fake_feats: np.ndarray) -> float:
     return float(diff @ diff + np.trace(sigma1 + sigma2 - 2 * covmean))
 
 
-# ── KID ───────────────────────────────────────────────────────────────────────
-
-def compute_kid(real_feats: np.ndarray, fake_feats: np.ndarray,
-                num_subsets: int = 50, subset_size: int = 100) -> tuple[float, float]:
-    """
-    Kernel Inception Distance — unbiased estimator via polynomial kernel MMD.
-    Returns (mean, std) across subsets.
-    Lower = better.
-    """
+# KID
+def compute_kid(real_feats: np.ndarray, fake_feats: np.ndarray, num_subsets: int = 50, subset_size: int = 100):
     subset_size = min(subset_size, len(real_feats), len(fake_feats))
     d = real_feats.shape[1]
     scores = []
@@ -91,44 +60,14 @@ def compute_kid(real_feats: np.ndarray, fake_feats: np.ndarray,
     return float(np.mean(scores)), float(np.std(scores))
 
 
-# ── Main evaluation loop ──────────────────────────────────────────────────────
 
-def run_evaluation(generator, latent_dim: int, ref_loader,
-                   device: torch.device, cfg: dict,
-                   generate_fn=None) -> dict:
-    """
-    Run FID/KID evaluation following the protocol:
-        - 5000 generated vs 5000 real
-        - 10 runs with different seeds
-        - Report mean ± std
-
-    Parameters
-    ----------
-    generator    : trained generator model
-    latent_dim   : size of the latent vector
-    ref_loader   : DataLoader with UNSEEN reference images (test split)
-    device       : torch device
-    cfg          : dict with keys:
-                     fid_kid_samples   (default 5000)
-                     num_runs          (default 10)
-                     num_subsets       (default 50)
-                     subset_size       (default 100)
-                     feature_batch_size(default 32)
-                     generation_seed   (default 123)
-    generate_fn  : optional custom generate function
-                   signature: (generator, latent_dim, n, device, seed) -> Tensor
-                   defaults to the built-in _default_generate
-
-    Returns
-    -------
-    dict with fid_mean, fid_std, kid_mean, kid_std, fid_per_run, kid_per_run
-    """
-    n        = cfg.get('fid_kid_samples',    5000)
-    n_runs   = cfg.get('num_runs',             10)
-    n_sub    = cfg.get('num_subsets',          50)
-    sub_size = cfg.get('subset_size',         100)
-    bs       = cfg.get('feature_batch_size',   32)
-    base_seed= cfg.get('generation_seed',     123)
+def run_evaluation(generator, latent_dim: int, ref_loader, device: torch.device, cfg: dict, generate_fn=None):
+    n = cfg.get('fid_kid_samples', 5000)
+    n_runs = cfg.get('num_runs', 10)
+    n_sub = cfg.get('num_subsets', 50)
+    sub_size = cfg.get('subset_size', 100)
+    bs = cfg.get('feature_batch_size', 32)
+    base_seed = cfg.get('generation_seed', 123)
 
     gen_fn = generate_fn
 
@@ -158,21 +97,20 @@ def run_evaluation(generator, latent_dim: int, ref_loader,
         print("  A extrair features das imagens geradas...")
         feats_gen = get_inception_features(gen_imgs, inception, device, bs)
 
-        fid_val           = compute_fid(feats_real, feats_gen)
+        fid_val = compute_fid(feats_real, feats_gen)
         kid_mean, kid_std = compute_kid(feats_real, feats_gen, n_sub, sub_size)
 
         fid_scores.append(fid_val)
         kid_means.append(kid_mean)
         kid_stds.append(kid_std)
 
-        print(f"  FID = {fid_val:.4f}  |  KID = {kid_mean:.6f} ± {kid_std:.6f}")
+        print(f"FID = {fid_val:.4f}  |  KID = {kid_mean:.6f} ± {kid_std:.6f}")
 
-    # ── Sumário ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)
     print("RESULTADOS FINAIS  (mean ± std  across runs)")
     print("=" * 50)
-    print(f"  FID : {np.mean(fid_scores):.4f} ± {np.std(fid_scores):.4f}")
-    print(f"  KID : {np.mean(kid_means):.6f} ± {np.std(kid_means):.6f}")
+    print(f"FID : {np.mean(fid_scores):.4f} ± {np.std(fid_scores):.4f}")
+    print(f"KID : {np.mean(kid_means):.6f} ± {np.std(kid_means):.6f}")
     print("=" * 50)
 
     return {
