@@ -111,10 +111,10 @@ def run_evaluation(generator, latent_dim: int, ref_loader, device: torch.device,
     print(f"KID : {np.mean(kid_means):.6f} ± {np.std(kid_means):.6f}")
 
     return {
-        'fid_mean':    float(np.mean(fid_scores)),
-        'fid_std':     float(np.std(fid_scores)),
-        'kid_mean':    float(np.mean(kid_means)),
-        'kid_std':     float(np.std(kid_means)),
+        'fid_mean': float(np.mean(fid_scores)),
+        'fid_std': float(np.std(fid_scores)),
+        'kid_mean': float(np.mean(kid_means)),
+        'kid_std': float(np.std(kid_means)),
         'fid_per_run': fid_scores,
         'kid_per_run': kid_means,
     }
