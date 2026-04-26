@@ -6,8 +6,6 @@ import json
 import random
 import argparse
 from pathlib import Path
-from collections import Counter
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,36 +17,31 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 PROJECT_ROOT = Path("../DATA")
-SCRIPTS_DIR  = PROJECT_ROOT / "scripts"
-KAGGLE_ROOT  = PROJECT_ROOT / "ArtBench-10"
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+KAGGLE_ROOT = PROJECT_ROOT / "ArtBench-10"
 
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-
-
-
-
-IMAGE_SIZE   = 32
-BATCH_SIZE   = 64
-NUM_WORKERS  = 0
-LATENT_DIM   = 128
-EPOCHS       = 300
-LR           = 1e-3
-BETA         = 0.1
+IMAGE_SIZE = 32
+BATCH_SIZE = 64
+NUM_WORKERS = 0
+LATENT_DIM = 128
+EPOCHS = 300
+LR = 1e-3
+BETA = 0.1
 SPATIAL_FLAT = 256 * 4 * 4  
 
 USE_SAVED_MODELS_IF_AVAILABLE = False
 
 TRAINING_CSV_PATH = Path("../DATA/training_20_percent.csv")
-INDEX_COLUMN      = "train_id_original"
+INDEX_COLUMN = "train_id_original"
 
 MODEL_DIR   = Path("./models")
 HISTORY_DIR = Path("./histories")
@@ -81,16 +74,16 @@ class HFDatasetTorch(Dataset):
 
     def __getitem__(self, idx):
         real_idx = self.indices[idx]
-        ex  = self.ds[real_idx]
+        ex = self.ds[real_idx]
         img = ex["image"]
-        y   = int(ex["label"])
-        x   = self.transform(img) if self.transform else img
+        y = int(ex["label"])
+        x = self.transform(img) if self.transform else img
         return x, y, real_idx
 
 
 def make_subset_indices(n_total: int, fraction: float, seed: int = 42):
     n_keep = max(1, int(round(n_total * fraction)))
-    g   = np.random.RandomState(seed)
+    g = np.random.RandomState(seed)
     idx = np.arange(n_total)
     g.shuffle(idx)
     return idx[:n_keep].tolist()
@@ -127,7 +120,7 @@ def show_batch_grid(loader, class_names, n_images=36, nrow=6, title="Sample Grid
     x, y, _ = next(iter(loader))
     x = x[:n_images]
     y = y[:n_images]
-    grid   = make_grid(x, nrow=nrow, padding=2)
+    grid = make_grid(x, nrow=nrow, padding=2)
     np_img = grid.permute(1, 2, 0).cpu().numpy()
     plt.figure(figsize=(8, 8))
     plt.imshow(np_img)
@@ -138,9 +131,6 @@ def show_batch_grid(loader, class_names, n_images=36, nrow=6, title="Sample Grid
     plt.close()
     labels_str = [class_names[int(v)] for v in y]
     print("Labels:", labels_str)
-
-
-
 
 
 def _artifact_stem(run_name: str) -> str:
@@ -177,9 +167,7 @@ def fit_or_load_model(
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
     with model_path.open("wb") as f:
-        torch.save(model.state_dict(
-            
-        ), f)
+        torch.save(model.state_dict(), f)
     with history_path.open("w", encoding="utf-8") as f:
         json.dump(history, f, indent=2)
     print(f"Saved {run_name} model to {model_path} and history to {history_path}")
@@ -203,9 +191,9 @@ class ConvVAE(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
         )
 
-        self.fc_mu     = nn.Linear(SPATIAL_FLAT, latent_dim)
+        self.fc_mu = nn.Linear(SPATIAL_FLAT, latent_dim)
         self.fc_logvar = nn.Linear(SPATIAL_FLAT, latent_dim)
-        self.dec_fc    = nn.Linear(latent_dim, SPATIAL_FLAT)
+        self.dec_fc = nn.Linear(latent_dim, SPATIAL_FLAT)
 
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
@@ -249,7 +237,7 @@ class ConvVAE(nn.Module):
 
     def forward(self, x):
         mu, logvar = self.encode(x)
-        z    = self.reparameterize(mu, logvar)
+        z = self.reparameterize(mu, logvar)
         xhat = self.decode(z)
         return xhat, mu, logvar
 
@@ -259,13 +247,10 @@ class ConvVAE(nn.Module):
         return self.decode(z)
 
 
-
-
-
 def vae_loss(xhat, x, mu, logvar, beta: float = 1.0):
-    B     = x.size(0)
+    B = x.size(0)
     recon = F.mse_loss(xhat, x, reduction="sum") / B
-    kl    = -0.5 * torch.sum(1.0 + logvar - mu.pow(2) - logvar.exp()) / B
+    kl = -0.5 * torch.sum(1.0 + logvar - mu.pow(2) - logvar.exp()) / B
     total = recon + beta * kl
     return total, recon, kl
 
@@ -276,32 +261,32 @@ def train_vae(model, loader, optimizer, epochs=EPOCHS, beta_max=BETA, scheduler=
     history = []
 
     for ep in range(1, epochs + 1):
-        beta       = min(beta_max, beta_max * (ep / (epochs * 0.6)))
+        beta = min(beta_max, beta_max * (ep / (epochs * 0.6)))
         total_loss = recon_loss = kl_loss = 0.0
 
         for x, _y, _idx in tqdm(loader, desc=f"Epoch {ep}/{epochs}", leave=False):
             x = x.to(device)
             optimizer.zero_grad()
             xhat, mu, logvar = model(x)
-            loss, recon, kl  = vae_loss(xhat, x, mu, logvar, beta=beta)
+            loss, recon, kl = vae_loss(xhat, x, mu, logvar, beta=beta)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
-            n           = x.size(0)
-            total_loss += loss.item()  * n
+            n = x.size(0)
+            total_loss += loss.item() * n
             recon_loss += recon.item() * n
-            kl_loss    += kl.item()    * n
+            kl_loss += kl.item() * n
 
         if scheduler is not None:
             scheduler.step()
 
-        N     = len(loader.dataset)
+        N = len(loader.dataset)
         entry = {
-            "epoch":       ep,
-            "train_loss":  total_loss / N,
+            "epoch": ep,
+            "train_loss": total_loss / N,
             "train_recon": recon_loss / N,
-            "train_kl":    kl_loss    / N,
+            "train_kl": kl_loss    / N,
         }
         history.append(entry)
         print(
@@ -314,7 +299,7 @@ def train_vae(model, loader, optimizer, epochs=EPOCHS, beta_max=BETA, scheduler=
         if ep % 10 == 0 or ep == epochs:
             model.eval()
             with torch.no_grad():
-                z       = torch.randn(64, model.latent_dim, device=device)
+                z = torch.randn(64, model.latent_dim, device=device)
                 samples = model.decode(z)
             SAMPLES_DIR.mkdir(parents=True, exist_ok=True)
             save_image(samples, SAMPLES_DIR / f"samples_ep{ep:04d}.png", nrow=8)
@@ -326,36 +311,33 @@ def train_vae(model, loader, optimizer, epochs=EPOCHS, beta_max=BETA, scheduler=
 def evaluate_vae(model, loader, beta=BETA):
     model.eval()
     total_loss = recon_loss = kl_loss = mse_sum = mae_sum = 0.0
-    n_samples  = 0
-    last_x     = None
+    n_samples = 0
+    last_x = None
 
     with torch.no_grad():
         for x, _y, _idx in loader:
-            x    = x.to(device)
+            x = x.to(device)
             xhat, mu, logvar = model(x)
-            B    = x.size(0)
+            B = x.size(0)
 
             loss, recon, kl = vae_loss(xhat, x, mu, logvar, beta=beta)
 
             total_loss += loss.item()  * B
             recon_loss += recon.item() * B
-            kl_loss    += kl.item()    * B
-            mse_sum    += F.mse_loss(xhat, x, reduction="sum").item()
-            mae_sum    += (xhat - x).abs().sum().item()
-            n_samples  += B
-            last_x      = x
+            kl_loss += kl.item()    * B
+            mse_sum += F.mse_loss(xhat, x, reduction="sum").item()
+            mae_sum += (xhat - x).abs().sum().item()
+            n_samples += B
+            last_x = x
 
     numel = last_x[0].numel()
     return {
-        "loss":      total_loss / n_samples,
+        "loss": total_loss / n_samples,
         "recon_mse": recon_loss / n_samples,
-        "kl":        kl_loss    / n_samples,
-        "mse":       mse_sum    / (n_samples * numel),
-        "mae":       mae_sum    / (n_samples * numel),
+        "kl": kl_loss / n_samples,
+        "mse": mse_sum / (n_samples * numel),
+        "mae": mae_sum / (n_samples * numel),
     }
-
-
-
 
 
 def show_reconstructions(model, loader, n=8, save_path="reconstructions_standard_beta.png"):
@@ -367,7 +349,7 @@ def show_reconstructions(model, loader, n=8, save_path="reconstructions_standard
         xhat, _, _ = model(x)
 
     comparison = torch.cat([x.cpu(), xhat.cpu()], dim=0)
-    grid       = make_grid(comparison, nrow=n, padding=2)
+    grid = make_grid(comparison, nrow=n, padding=2)
 
     plt.figure(figsize=(n * 1.5, 4))
     plt.imshow(grid.permute(1, 2, 0).numpy())
@@ -382,7 +364,7 @@ def show_reconstructions(model, loader, n=8, save_path="reconstructions_standard
 def show_prior_samples(model, n=64, nrow=8, save_path="prior_samples_standard_beta.png"):
     model.eval()
     with torch.no_grad():
-        z       = torch.randn(n, model.latent_dim, device=device)
+        z = torch.randn(n, model.latent_dim, device=device)
         samples = model.decode(z)
 
     grid = make_grid(samples.cpu(), nrow=nrow, padding=2)
@@ -397,17 +379,13 @@ def show_prior_samples(model, n=64, nrow=8, save_path="prior_samples_standard_be
     print(f"Saved prior samples to {save_path}")
 
 def make_generate_fn(model: ConvVAE, device: torch.device):
-    """
-    Wraps model.sample into the generate_fn(n, batch_size, seed) signature
-    expected by metrics.compute_fid_kid / metrics.evaluate_over_seeds.
-    """
     @torch.no_grad()
     def generate_fn(n: int, batch_size: int, seed: int) -> torch.Tensor:
         torch.manual_seed(seed)
         model.eval()
         chunks = []
         for start in range(0, n, batch_size):
-            bs   = min(batch_size, n - start)
+            bs = min(batch_size, n - start)
             imgs = model.sample(bs, device).cpu()
             chunks.append(imgs)
         return torch.cat(chunks, dim=0)   
@@ -415,58 +393,37 @@ def make_generate_fn(model: ConvVAE, device: torch.device):
     return generate_fn
 
 
-
 def parse_args():
     p = argparse.ArgumentParser(description="beta-VAE training and evaluation")
-
-    
-    p.add_argument("--mode", choices=["train", "eval_recon", "eval_fid", "eval_fid_seeds"],
-                   default="train",
-                   help=(
-                       "train           : train from scratch (or load if --load);\n"
-                       "eval_recon      : reconstruction + KL metrics on training set;\n"
-                   ))
-
-    
-    p.add_argument("--checkpoint", type=str, default=None,
-                   help="Path to a .pt state-dict to load before eval/train.")
-    p.add_argument("--load", action="store_true",
-                   help="Load existing model checkpoint if available (fit_or_load logic).")
-
-    
-    p.add_argument("--latent_dim",  type=int,   default=LATENT_DIM)
-    p.add_argument("--epochs",      type=int,   default=EPOCHS)
-    p.add_argument("--lr",          type=float, default=LR)
-    p.add_argument("--beta",        type=float, default=BETA)
-    p.add_argument("--batch_size",  type=int,   default=BATCH_SIZE)
-    p.add_argument("--image_size",  type=int,   default=IMAGE_SIZE)
-    p.add_argument("--num_workers", type=int,   default=NUM_WORKERS)
-
-    
-    p.add_argument("--n_samples",      type=int, default=5000)
+    p.add_argument("--mode", choices=["train", "eval_recon", "eval_fid", "eval_fid_seeds"], default="train")
+    p.add_argument("--checkpoint", type=str, default=None)
+    p.add_argument("--load", action="store_true")
+    p.add_argument("--latent_dim", type=int,   default=LATENT_DIM)
+    p.add_argument("--epochs", type=int,   default=EPOCHS)
+    p.add_argument("--lr", type=float, default=LR)
+    p.add_argument("--beta", type=float, default=BETA)
+    p.add_argument("--batch_size", type=int,   default=BATCH_SIZE)
+    p.add_argument("--image_size", type=int,   default=IMAGE_SIZE)
+    p.add_argument("--num_workers",type=int,   default=NUM_WORKERS)
+    p.add_argument("--n_samples", type=int, default=5000)
     p.add_argument("--gen_batch_size", type=int, default=128)
-    p.add_argument("--n_seeds",        type=int, default=10)
-    p.add_argument("--seed",           type=int, default=0)
-
-    
-    p.add_argument("--training_csv",  type=str, default=str(TRAINING_CSV_PATH))
-    p.add_argument("--run_name",      type=str, default="artbench_beta_VAE")
-    p.add_argument("--kaggle_root",   type=str, default=str(KAGGLE_ROOT))
-    p.add_argument("--scripts_dir",   type=str, default=str(SCRIPTS_DIR))
-
+    p.add_argument("--n_seeds", type=int, default=10)
+    p.add_argument("--seed",type=int, default=0)
+    p.add_argument("--training_csv", type=str, default=str(TRAINING_CSV_PATH))
+    p.add_argument("--run_name", type=str, default="artbench_beta_VAE")
+    p.add_argument("--kaggle_root", type=str, default=str(KAGGLE_ROOT))
+    p.add_argument("--scripts_dir", type=str, default=str(SCRIPTS_DIR))
     return p.parse_args()
 
 
 def main():
     args = parse_args()
 
-    
     kaggle_root = Path(args.kaggle_root)
     scripts_dir = Path(args.scripts_dir)
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
 
-    
     from artbench_local_dataset import load_kaggle_artbench10_splits
     hf_ds    = load_kaggle_artbench10_splits(kaggle_root)
     train_hf = hf_ds["train"]
@@ -533,7 +490,7 @@ def main():
         metrics = evaluate_vae(vae, train_loader, beta=args.beta)
         print("Reconstruction metrics:")
         for k, v in metrics.items():
-            print(f"  {k}: {v:.6f}")
+            print(f"{k}: {v:.6f}")
         show_reconstructions(vae, train_loader)
         show_prior_samples(vae)
 

@@ -90,11 +90,11 @@ def run_evaluation(generator, latent_dim: int, ref_loader, device: torch.device,
 
     for run in range(n_runs):
         seed = base_seed + run
-        print(f"\n── Run {run + 1}/{n_runs}  (seed={seed}) ──────────────────────")
+        print(f"Run {run + 1}/{n_runs}  (seed={seed})")
 
         gen_imgs = gen_fn(generator, latent_dim, n, device, seed)
 
-        print("  A extrair features das imagens geradas...")
+        print("A extrair features das imagens geradas...")
         feats_gen = get_inception_features(gen_imgs, inception, device, bs)
 
         fid_val = compute_fid(feats_real, feats_gen)
@@ -106,12 +106,9 @@ def run_evaluation(generator, latent_dim: int, ref_loader, device: torch.device,
 
         print(f"FID = {fid_val:.4f}  |  KID = {kid_mean:.6f} ± {kid_std:.6f}")
 
-    print("\n" + "=" * 50)
     print("RESULTADOS FINAIS  (mean ± std  across runs)")
-    print("=" * 50)
     print(f"FID : {np.mean(fid_scores):.4f} ± {np.std(fid_scores):.4f}")
     print(f"KID : {np.mean(kid_means):.6f} ± {np.std(kid_means):.6f}")
-    print("=" * 50)
 
     return {
         'fid_mean':    float(np.mean(fid_scores)),

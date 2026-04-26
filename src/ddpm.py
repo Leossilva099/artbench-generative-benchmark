@@ -564,11 +564,7 @@ def generate_samples(model, diffusion, cfg, device, n=5000, batch_size=128, use_
                 labels=labels,
             )
         else:
-            x = diffusion.p_sample_loop_ddpm(
-                model, shape,
-                cfg_scale=cfg.cfg_scale,
-                labels=labels,
-            )
+            x = diffusion.p_sample_loop_ddpm(model, shape, cfg_scale=cfg.cfg_scale, labels=labels)
 
         x = (x.clamp(-1.0, 1.0) + 1.0) * 0.5
         all_samples.append(x.cpu())
@@ -588,13 +584,12 @@ def main():
     parser = argparse.ArgumentParser(description="DDPM for ArtBench-10")
     parser.add_argument("--mode", choices=["train", "eval", "sample"], default="train")
     parser.add_argument("--config", choices=list(CONFIGS.keys()), default="medium")
-    parser.add_argument("--full_dataset", action="store_true", help="Train on full 50k instead of 20 percent subset")
-    parser.add_argument("--checkpoint", type=str, default=None, help="Path to .pt checkpoint for eval/sample mode")
-    parser.add_argument("--epochs", type=int, default=None, help="Override number of epochs")
+    parser.add_argument("--full_dataset", action="store_true")
+    parser.add_argument("--checkpoint", type=str, default=None)
+    parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--n_eval_seeds", type=int, default=10)
     parser.add_argument("--project_root", type=str, default="../DATA")
-    parser.add_argument("--resume", type=str, default=None, help="Checkpoint .pt para continuar treino")
+    parser.add_argument("--resume", type=str, default=None)
     args = parser.parse_args()
 
     set_seed(args.seed)

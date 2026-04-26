@@ -44,10 +44,9 @@ transform = T.Compose([
     T.ToTensor(),
     T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
 ])
-test_ds     = HFDatasetTorch(test_hf, transform=transform)
+test_ds = HFDatasetTorch(test_hf, transform=transform)
 test_loader = DataLoader(test_ds, batch_size=64, shuffle=True, num_workers=0)
 
-# Loader sem Normalize — para VAE (treinou com [0,1])
 transform_vae = T.Compose([
     T.Resize(32, interpolation=T.InterpolationMode.BILINEAR),
     T.CenterCrop(32),
@@ -57,16 +56,15 @@ test_ds_vae     = HFDatasetTorch(test_hf, transform=transform_vae)
 test_loader_vae = DataLoader(test_ds_vae, batch_size=64, shuffle=True, num_workers=0)
 
 evaluation_config = {
-    'fid_kid_samples':    5000,
-    'num_runs':             10,
-    'subset_size':         100,
-    'num_subsets':          50,
-    'feature_batch_size':   32,
-    'generation_seed':     123,
+    'fid_kid_samples': 5000,
+    'num_runs': 10,
+    'subset_size': 100,
+    'num_subsets': 50,
+    'feature_batch_size': 32,
+    'generation_seed': 123,
 }
 
 all_results = {}
-
 
 # GAN
 print("\n" + "="*60)
@@ -80,11 +78,11 @@ gan_generator.load_state_dict(ckpt['generator'])
 gan_generator.eval()
 
 all_results['DCGAN_LS_HalfLR_ngf256_300_epochs'] = run_evaluation(
-    generator   = gan_generator,
-    latent_dim  = gan_cfg['latent_dim'],
-    ref_loader  = test_loader,
-    device      = device,
-    cfg         = evaluation_config,
+    generator = gan_generator,
+    latent_dim = gan_cfg['latent_dim'],
+    ref_loader = test_loader,
+    device = device,
+    cfg = evaluation_config,
     generate_fn = generate_images,
 )
 
@@ -96,11 +94,11 @@ for config_name, ckpt_name in [
 
     cfg_i = CONFIGS[config_name]
     cfg_i.ddim_steps = 50
-    sched_i   = make_cosine_schedule(cfg_i.T, s=cfg_i.cosine_s, device=device)
-    diff_i    = GaussianDiffusion(sched_i, device)
+    sched_i = make_cosine_schedule(cfg_i.T, s=cfg_i.cosine_s, device=device)
+    diff_i = GaussianDiffusion(sched_i, device)
 
-    ckpt_i    = torch.load(f'models/{ckpt_name}', map_location=device, weights_only=False)
-    model_i   = ArtBenchUNet(
+    ckpt_i = torch.load(f'models/{ckpt_name}', map_location=device, weights_only=False)
+    model_i = ArtBenchUNet(
         model_channels=cfg_i.model_channels,
         num_classes=cfg_i.num_classes,
         use_cfg=cfg_i.use_cfg,
@@ -114,11 +112,11 @@ for config_name, ckpt_name in [
         return fn
 
     all_results[f'Diffusion_{config_name}_{cfg_i.epochs}ep'] = run_evaluation(
-        generator   = model_i,
-        latent_dim  = None,
-        ref_loader  = test_loader,
-        device      = device,
-        cfg         = evaluation_config,
+        generator = model_i,
+        latent_dim = None,
+        ref_loader = test_loader,
+        device = device,
+        cfg = evaluation_config,
         generate_fn = make_diff_fn(model_i, diff_i, cfg_i),
     )
 
@@ -137,11 +135,11 @@ def vae_generate_fn(model, latent_dim, n, device, seed):
     return _vae_gen(n=n, batch_size=128, seed=seed)
 
 all_results['Beta_VAE_beta01_latent256_300_epochs'] = run_evaluation(
-    generator   = vae_model,
-    latent_dim  = 256,
-    ref_loader  = test_loader_vae,
-    device      = device,
-    cfg         = evaluation_config,
+    generator = vae_model,
+    latent_dim = 256,
+    ref_loader = test_loader_vae,
+    device = device,
+    cfg = evaluation_config,
     generate_fn = vae_generate_fn,
 )
 # Real vs Real — sanity check
@@ -161,11 +159,11 @@ def real_generate_fn(model, latent_dim, n, device, seed):
     return imgs[idx]
 
 all_results['Real_vs_Real'] = run_evaluation(
-    generator   = None,
-    latent_dim  = None,
-    ref_loader  = test_loader,
-    device      = device,
-    cfg         = evaluation_config,
+    generator = None,
+    latent_dim = None,
+    ref_loader = test_loader,
+    device = device,
+    cfg = evaluation_config,
     generate_fn = real_generate_fn,
 )
 

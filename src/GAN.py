@@ -156,17 +156,17 @@ def train_gan(generator, discriminator, loader, latent_dim,
 
             # Discriminator
             opt_d.zero_grad()
-            d_loss  = criterion(discriminator(real), real_targets)
-            z       = torch.randn(bs, latent_dim, device=device)
-            fake    = generator(z)
+            d_loss = criterion(discriminator(real), real_targets)
+            z = torch.randn(bs, latent_dim, device=device)
+            fake = generator(z)
             d_loss += criterion(discriminator(fake.detach()), fake_targets)
             d_loss.backward()
             opt_d.step()
 
             # Generator
             opt_g.zero_grad()
-            z      = torch.randn(bs, latent_dim, device=device)
-            fake   = generator(z)
+            z = torch.randn(bs, latent_dim, device=device)
+            fake = generator(z)
             g_loss = criterion(discriminator(fake), real_targets)
             g_loss.backward()
             opt_g.step()
@@ -184,7 +184,7 @@ def train_gan(generator, discriminator, loader, latent_dim,
         if epoch % 50 == 0 or epoch == epochs - 1:
             generator.eval()
             with torch.no_grad():
-                z       = torch.randn(64, latent_dim, device=device)
+                z = torch.randn(64, latent_dim, device=device)
                 samples = generator(z)
                 samples = (samples * 0.5 + 0.5).clamp(0, 1)
             save_image(samples, samples_dir / f'samples_ep{epoch:04d}.png', nrow=8)
@@ -198,12 +198,12 @@ def save_checkpoint(generator, discriminator, history, checkpoint_path,
     checkpoint_path = Path(checkpoint_path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
-        'generator':     generator.state_dict(),
+        'generator': generator.state_dict(),
         'discriminator': discriminator.state_dict(),
-        'history':       history,
+        'history': history,
         'config': {
             'latent_dim': latent_dim,
-            'channels':   channels,
+            'channels': channels,
             'image_size': image_size,
         },
     }, checkpoint_path)
@@ -214,9 +214,8 @@ def load_dcgan_generator_for_inference(checkpoint_path, device=None):
     if device is None:
         device = get_device()
     ckpt = torch.load(checkpoint_path, map_location=device)
-    cfg  = ckpt['config']
-    gen  = DCGenerator(latent_dim=cfg['latent_dim'],
-                       image_channels=cfg['channels']).to(device)
+    cfg = ckpt['config']
+    gen = DCGenerator(latent_dim=cfg['latent_dim'], image_channels=cfg['channels']).to(device)
     gen.load_state_dict(ckpt['generator'])
     gen.eval()
     return gen, cfg, ckpt.get('history', None)
@@ -231,10 +230,10 @@ def generate_images(generator, latent_dim, n_samples, device, seed):
 
 
 def show_image_grid(images, title=None, nrow=8, figsize=(8, 8), cmap='gray'):
-    images   = images.detach().cpu().float()
-    images   = (images * 0.5 + 0.5).clamp(0, 1)
-    grid     = make_grid(images, nrow=nrow)
-    np_grid  = grid.permute(1, 2, 0).numpy()
+    images = images.detach().cpu().float()
+    images = (images * 0.5 + 0.5).clamp(0, 1)
+    grid = make_grid(images, nrow=nrow)
+    np_grid = grid.permute(1, 2, 0).numpy()
     plt.figure(figsize=figsize)
     if np_grid.shape[-1] == 1:
         plt.imshow(np_grid[..., 0], cmap=cmap)
@@ -271,9 +270,9 @@ def main():
     parser = argparse.ArgumentParser(description='DCGAN for ArtBench-10')
     parser.add_argument('--mode', choices=['train', 'eval', 'plot'], default='train')
     parser.add_argument('--checkpoint', type=str, default='models/artBenchDCGAN_LS_halfLR_ngf256.pt')
-    parser.add_argument('--epochs',     type=int, default=300)
-    parser.add_argument('--lr',         type=float, default=2e-4)
-    parser.add_argument('--csv',        type=str, default='../DATA/training_20_percent.csv')
+    parser.add_argument('--epochs', type=int, default=300)
+    parser.add_argument('--lr', type=float, default=2e-4)
+    parser.add_argument('--csv', type=str, default='../DATA/training_20_percent.csv')
     args = parser.parse_args()
 
     device = get_device()
@@ -285,35 +284,33 @@ def main():
         return
 
     from artbench_local_dataset import load_kaggle_artbench10_splits
-    hf_ds    = load_kaggle_artbench10_splits(KAGGLE_ROOT)
+    hf_ds = load_kaggle_artbench10_splits(KAGGLE_ROOT)
     train_hf = hf_ds['train']
 
     train_ids = load_ids_from_training_csv(Path(args.csv))
-    train_ds  = HFDatasetTorch(train_hf, transform=transform, indices=train_ids)
+    train_ds = HFDatasetTorch(train_hf, transform=transform, indices=train_ids)
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,
                               num_workers=NUM_WORKERS, pin_memory=torch.cuda.is_available())
 
     if args.mode == 'train':
-        latent_dim    = 100
-        channels      = 3
-        generator     = DCGenerator(latent_dim, channels,ngf=256).to(device)
+        latent_dim = 100
+        channels = 3
+        generator = DCGenerator(latent_dim, channels,ngf=256).to(device)
         discriminator = DCDiscriminator(channels,ndf=256).to(device)
         generator.apply(init_dcgan_weights)
         discriminator.apply(init_dcgan_weights)
 
-        history = train_gan(generator, discriminator, train_loader,
-                            latent_dim, epochs=args.epochs, lr=args.lr, device=device)
+        history = train_gan(generator, discriminator, train_loader, latent_dim, epochs=args.epochs, lr=args.lr, device=device)
 
-        save_checkpoint(generator, discriminator, history,
-                        args.checkpoint, latent_dim, channels, IMAGE_SIZE)
+        save_checkpoint(generator, discriminator, history, args.checkpoint, latent_dim, channels, IMAGE_SIZE)
         plot_gan_losses(history)
 
     elif args.mode == 'eval':
         from metrics import run_evaluation
         generator, cfg, _ = load_dcgan_generator_for_inference(args.checkpoint, device)
 
-        test_hf  = hf_ds['test']
-        test_ds  = HFDatasetTorch(test_hf, transform=transform)
+        test_hf = hf_ds['test']
+        test_ds = HFDatasetTorch(test_hf, transform=transform)
         test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
 
         evaluation_config = {
@@ -326,11 +323,11 @@ def main():
         }
 
         results = run_evaluation(
-            generator   = generator,
-            latent_dim  = cfg['latent_dim'],
-            ref_loader  = test_loader,
-            device      = device,
-            cfg         = evaluation_config,
+            generator = generator,
+            latent_dim = cfg['latent_dim'],
+            ref_loader = test_loader,
+            device = device,
+            cfg = evaluation_config,
             generate_fn = generate_images,
         )
         print(results)
