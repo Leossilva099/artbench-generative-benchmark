@@ -16,6 +16,8 @@ Models compared:
 - **DCGAN** — Deep Convolutional GAN with label smoothing and asymmetric learning rates
 - **DDPM** — Denoising Diffusion Probabilistic Model with Classifier-Free Guidance (CFG), EMA, and DDIM sampling
 
+[Read the full report](docs/Report.pdf)
+
 ---
 
 ## Results
@@ -65,26 +67,26 @@ pip install torch torchvision numpy matplotlib scikit-learn tqdm datasets
 ### β-VAE
 ```bash
 cd src
-PYTHONPATH=../DATA/scripts python3 beta_VAE.py --mode train --epochs 300 --beta 0.1 --latent_dim 64 --run_name vae_b01_z64
+python3 beta_VAE.py --mode train --epochs 300 --beta 0.1 --latent_dim 64 --run_name vae_b01_z64
 ```
 
 ### DCGAN
 ```bash
 cd src
-PYTHONPATH=../DATA/scripts python3 GAN.py --mode train
+python3 GAN.py --mode train
 ```
 
 ### DDPM
 ```bash
 # 20% subset
 cd src
-PYTHONPATH=../DATA/scripts python3 diffusion.py --mode train --config cfg_w3 --epochs 500
+python3 diffusion.py --mode train --config cfg_w3 --epochs 500
 
 # Full dataset
-PYTHONPATH=../DATA/scripts python3 diffusion.py --mode train --config best --full_dataset
+python3 diffusion.py --mode train --config best --full_dataset
 
 # Resume from checkpoint
-PYTHONPATH=../DATA/scripts python3 diffusion.py --mode train --config cfg_w3 --epochs 500 --resume models/cfg_w3_ep0300.pt
+python3 diffusion.py --mode train --config cfg_w3 --epochs 500 --resume models/cfg_w3_ep0300.pt
 ```
 
 ---
@@ -93,7 +95,7 @@ PYTHONPATH=../DATA/scripts python3 diffusion.py --mode train --config cfg_w3 --e
 
 ```bash
 cd src
-PYTHONPATH=../DATA/scripts python3 evaluate_all.py
+python3 evaluate_all.py
 ```
 
 Results are saved to `evaluation_results.json`.
@@ -110,7 +112,7 @@ Evaluation protocol:
 ```bash
 # Generate samples from best DDPM
 cd src
-PYTHONPATH=../DATA/scripts python3 diffusion.py --mode sample --config best --checkpoint models/best_full_final.pt
+python3 diffusion.py --mode sample --config best --checkpoint models/best_full_final.pt
 ```
 
 ---
