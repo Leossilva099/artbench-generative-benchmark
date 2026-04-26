@@ -37,22 +37,33 @@ The final DDPM surpasses all unconditional diffusion baselines reported in the o
 ## Project Structure
 
 ```
-GenerativeAI/
-├── src/
-│   ├── beta_VAE.py          # β-VAE implementation
-│   ├── GAN.py               # DCGAN implementation
-│   ├── diffusion.py         # DDPM + CFG + DDIM implementation
-│   ├── metrics.py           # FID/KID evaluation pipeline
-│   ├── evaluate_all.py      # Evaluate all models
-│   └── models/              # Saved checkpoints (.pt)
+artbench-generative-benchmark/
+├── README.md
+├── docs/
+│   ├── Report.pdf                          # Final report
+│   └── GENAI__TP1_Enunciado_2026_v2.pdf    # Project brief
 ├── DATA/
-│   ├── ArtBench-10/         # Dataset
-│   ├── scripts/             # Data loading utilities
-│   └── training_20_percent.csv  # 20% subset indices
-└── histories/               # Training histories and evaluation results
+│   ├── ArtBench-10/                        # Dataset
+│   ├── training_20_percent.csv             # 20% subset indices
+│   └── scripts/
+│       └── artbench_local_dataset.py       # Data loading utilities
+└── src/
+    ├── beta_VAE.py                         # β-VAE implementation
+    ├── GAN.py                              # DCGAN implementation
+    ├── diffusion.py                        # DDPM + CFG + DDIM
+    ├── metrics.py                          # FID/KID evaluation
+    ├── evaluate_all.py                     # Evaluate all models
+    ├── style.py                            # Generate images per style
+    ├── evaluation_results.json             # Evaluation results
+    ├── models/                             # Checkpoints (.pt, via Git LFS)
+    ├── DCGAN_losses/                       # Training loss plots
+    ├── histories/                          # Beta-VAE training histories 
+    ├── exported_data/
+    │   └── train_subset/                   # Exported training subset images
+    └── samples/                            # Generated image grids
 ```
 
----
+___
 
 ## Installation
 
