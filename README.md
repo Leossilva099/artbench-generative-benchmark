@@ -3,6 +3,10 @@
 
 > João Vaz and Leonardo Silva — Department of Informatics Engineering, University of Coimbra
 
+| Real Samples | DDPM (best, full dataset) |
+|---|---|
+| ![real](src/samples/real_samples.png) | ![ddpm](src/samples/ddpm_samples/best_full_ep500_samples.png) |
+
 ---
 
 ## Overview
