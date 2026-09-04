@@ -28,7 +28,6 @@ Models compared:
 | DCGAN (ngf=256, LS, LR/2) | 18.79 ± 0.36 | 0.01201 ± 0.00053 | ~6.7s |
 | DDPM (20% subset, w=5.0, 500ep) | 12.29 ± 0.31 | 0.00378 ± 0.00044 | ~17 min |
 | **DDPM (full dataset, w=5.0, 50 steps)** | **9.28 ± 0.10** | **0.00264 ± 0.00031** | ~42 min |
-| Real vs. Real | 2.51 ± 0.03 | ≈0 | — |
 
 The final DDPM surpasses all unconditional diffusion baselines reported in the original ArtBench paper, including DDIM (FID=17.56) and Improved DDPM (FID=15.31).
 
